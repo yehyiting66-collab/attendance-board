@@ -72,8 +72,11 @@
                         <h1 class="text-lg sm:text-xl font-bold tracking-wide flex items-center gap-2">
                             院長室智慧會議點名系統
                             <span class="text-xs bg-teal-500/20 text-teal-300 border border-teal-500/40 px-2 py-0.5 rounded-full font-normal">慈濟醫療體系</span>
+                            <span id="cloud-sync-badge" class="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full font-normal flex items-center gap-1">
+                                <i class="fa-solid fa-cloud-arrow-up animate-pulse"></i> 連線中...
+                            </span>
                         </h1>
-                        <p class="text-xs text-slate-400 hidden sm:block">智能卡片看板．即時出席分析．會議紀錄自動產出</p>
+                        <p class="text-xs text-slate-400 hidden sm:block">智能卡片看板．雲端多人即時同步．會議紀錄自動產出</p>
                     </div>
                 </div>
 
@@ -458,8 +461,8 @@
             <!-- 系統資料備份與還原區塊 -->
             <div class="bg-slate-800 text-white p-5 rounded-2xl flex flex-wrap items-center justify-between gap-4">
                 <div>
-                    <h3 class="font-bold text-base flex items-center gap-2"><i class="fa-solid fa-database text-teal-400"></i> 系統資料備份與還原 (LocalStorage 自動儲存)</h3>
-                    <p class="text-xs text-slate-300 mt-1">所有名單、會議設定與歷史點名紀錄皆自動儲存於本機瀏覽器。建議定期匯出 JSON 備份檔以防瀏覽器清除快取。</p>
+                    <h3 class="font-bold text-base flex items-center gap-2"><i class="fa-solid fa-cloud text-teal-400"></i> 雲端多人即時共用與備份還原</h3>
+                    <p class="text-xs text-slate-300 mt-1">所有名單、會議設定與即時點名狀態皆已啟用雲端多人即時同步。操作 ID：<span id="display-user-id" class="font-mono text-teal-300 select-all">連線中...</span></p>
                 </div>
                 <div class="flex items-center gap-2">
                     <button onclick="exportBackupJSON()" class="px-3.5 py-2 bg-slate-700 hover:bg-slate-600 rounded-xl text-xs font-semibold transition flex items-center gap-1.5">
@@ -804,13 +807,24 @@
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
     <!-- =========================================================================
-         JavaScript 核心邏輯
+         JavaScript 核心邏輯 (雲端多人即時共用版)
     ========================================================================== -->
-    <script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
         // ---------------------------------------------------------------------
-        // 1. 系統資料狀態與預設初始化 (LocalStorage 自動儲存)
+        // 1. 雲端資料庫連線與系統資料狀態
         // ---------------------------------------------------------------------
-        const STORAGE_KEY = 'tzuchi_superintendent_rollcall_v1';
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+
+        let db = null;
+        let auth = null;
+        let currentUser = null;
+        let stateDocRef = null;
+        let isRemoteUpdating = false;
 
         // 預設初始主管名單 (慈濟醫院院長室主管會議常用班底)
         const DEFAULT_MEMBERS = [
@@ -868,42 +882,116 @@
             return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
         }
 
-        // 儲存至 LocalStorage
-        function saveState() {
-            try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
-            } catch (e) {
-                console.error('LocalStorage 儲存失敗:', e);
-                showToast('瀏覽器儲存空間已滿，建議清理舊大頭照或匯出備份', 'error');
+        function updateSyncBadge(status) {
+            const badge = document.getElementById('cloud-sync-badge');
+            if (!badge) return;
+            if (status === 'synced') {
+                badge.className = 'text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-normal flex items-center gap-1';
+                badge.innerHTML = '<i class="fa-solid fa-cloud-check"></i> 雲端多人同步中';
+            } else if (status === 'saving') {
+                badge.className = 'text-xs bg-sky-500/20 text-sky-300 border border-sky-500/40 px-2 py-0.5 rounded-full font-normal flex items-center gap-1';
+                badge.innerHTML = '<i class="fa-solid fa-rotate fa-spin"></i> 同步上傳中...';
+            } else {
+                badge.className = 'text-xs bg-rose-500/20 text-rose-300 border border-rose-500/40 px-2 py-0.5 rounded-full font-normal flex items-center gap-1';
+                badge.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> 離線模式';
             }
         }
 
-        // 從 LocalStorage 載入資料
-        function loadState() {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            if (raw) {
-                try {
-                    appState = JSON.parse(raw);
-                } catch (e) {
-                    console.error('解析儲存資料失敗，重設為預設值', e);
-                }
+        // 儲存至雲端共用資料庫 (即時推送給所有連線裝置)
+        async function saveState() {
+            if (isRemoteUpdating) return;
+            if (!currentUser || !stateDocRef) return;
+
+            updateSyncBadge('saving');
+            try {
+                await setDoc(stateDocRef, {
+                    members: appState.members,
+                    templates: appState.templates,
+                    currentMeeting: appState.currentMeeting,
+                    history: appState.history,
+                    updatedAt: Date.now(),
+                    updatedBy: currentUser.uid
+                });
+                updateSyncBadge('synced');
+            } catch (e) {
+                console.error('雲端同步失敗:', e);
+                updateSyncBadge('error');
+                showToast('雲端同步發生異常，請檢查網路連線', 'error');
+            }
+        }
+
+        // 初始化雲端共用狀態與即時監聽
+        async function initCloudSync() {
+            // 先載入預設結構避免畫面空白
+            appState.members = JSON.parse(JSON.stringify(DEFAULT_MEMBERS));
+            appState.templates = JSON.parse(JSON.stringify(DEFAULT_TEMPLATES));
+            appState.history = [];
+            appState.currentMeeting = createSessionFromTemplate(appState.templates[0], getTodayStr(), '09:00');
+            renderRollCallBoard();
+
+            if (!firebaseConfig) {
+                updateSyncBadge('error');
+                return;
             }
 
-            if (!appState.members || appState.members.length === 0) {
-                appState.members = JSON.parse(JSON.stringify(DEFAULT_MEMBERS));
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // 優先使用自訂 Token 登入，否則匿名登入
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                currentUser = auth.currentUser;
+                if (!currentUser) return;
+
+                const uidEl = document.getElementById('display-user-id');
+                if (uidEl) uidEl.textContent = currentUser.uid;
+
+                // 使用公開共用路徑，讓所有開啟此系統的秘書與手機端即時共享同一份資料
+                stateDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'rollcall_system', 'shared_state');
+
+                // 檢查雲端是否已有資料，若無則寫入初始預設資料
+                const initialSnap = await getDoc(stateDocRef);
+                if (!initialSnap.exists()) {
+                    await saveState();
+                }
+
+                // 監聽雲端即時變更 (多人同時點名或手機 QR 簽到時自動更新畫面)
+                onSnapshot(stateDocRef, (snapshot) => {
+                    if (!snapshot.exists()) return;
+                    const data = snapshot.data();
+
+                    isRemoteUpdating = true;
+                    if (data.members) appState.members = data.members;
+                    if (data.templates) appState.templates = data.templates;
+                    if (data.currentMeeting) appState.currentMeeting = data.currentMeeting;
+                    if (data.history) appState.history = data.history;
+
+                    // 重新渲染目前正在檢視的頁籤
+                    const activeTab = document.querySelector('.tab-content:not(.hidden)')?.id?.replace('tab-', '') || 'rollcall';
+                    if (activeTab === 'rollcall') renderRollCallBoard();
+                    if (activeTab === 'dashboard') renderDashboard();
+                    if (activeTab === 'meetings') renderMeetingsTab();
+                    if (activeTab === 'members') renderMembersTable();
+                    if (activeTab === 'history') renderHistoryList();
+                    if (activeTab === 'analytics') renderAnalytics();
+
+                    updateSyncBadge('synced');
+                    isRemoteUpdating = false;
+                }, (error) => {
+                    console.error('雲端即時監聽錯誤:', error);
+                    updateSyncBadge('error');
+                });
+
+            } catch (err) {
+                console.error('雲端初始化失敗:', err);
+                updateSyncBadge('error');
             }
-            if (!appState.templates || appState.templates.length === 0) {
-                appState.templates = JSON.parse(JSON.stringify(DEFAULT_TEMPLATES));
-            }
-            if (!appState.history) {
-                appState.history = [];
-            }
-            if (!appState.currentMeeting) {
-                // 預設啟動「院長室主管會議」
-                const tpl = appState.templates[0];
-                appState.currentMeeting = createSessionFromTemplate(tpl, getTodayStr(), '09:00');
-            }
-            saveState();
         }
 
         // 由範本建立點名場次
@@ -2319,10 +2407,52 @@
         // ---------------------------------------------------------------------
         // 12. 啟動初始化
         // ---------------------------------------------------------------------
-        window.onload = function () {
-            loadState();
-            renderRollCallBoard();
-        };
+        // 12. 啟動初始化與全域函式綁定
+        // ---------------------------------------------------------------------
+        Object.assign(window, {
+            switchTab,
+            renderRollCallBoard,
+            toggleCardPresence,
+            openStatusModal,
+            selectStatusOption,
+            saveMemberStatus,
+            copyMeetingMinutes,
+            finishRollCall,
+            openQuickAddModal,
+            submitQuickAdd,
+            openQRModal,
+            executeSelfCheckIn,
+            setMeetingFormType,
+            startNewMeetingSession,
+            renderTemplateMembersEditor,
+            toggleMemberInTemplate,
+            toggleAllTemplateMembers,
+            updateTemplateMeta,
+            createNewTemplatePrompt,
+            saveAsFixedTemplate,
+            renderMembersTable,
+            moveMemberOrder,
+            sortMembers,
+            openMemberModal,
+            handleAvatarUpload,
+            saveMemberForm,
+            deleteMember,
+            downloadExcelTemplate,
+            handleExcelImport,
+            renderHistoryList,
+            copyHistoryItem,
+            viewHistoryDetail,
+            deleteHistoryItem,
+            renderAnalytics,
+            exportAnalyticsExcel,
+            exportBackupJSON,
+            importBackupJSON,
+            closeModal
+        });
+
+        window.addEventListener('load', function () {
+            initCloudSync();
+        });
     </script>
 </body>
 </html>
