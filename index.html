@@ -1131,105 +1131,6 @@
             }
         }
 
-        // 儲存至雲端共用資料庫 (即時推送給所有連線裝置)
-        async function saveState() {
-            if (isRemoteUpdating) return;
-            if (!currentUser || !stateDocRef) return;
-
-            updateSyncBadge('saving');
-            try {
-                await setDoc(stateDocRef, {
-                    members: appState.members,
-                    templates: appState.templates,
-                    currentMeeting: appState.currentMeeting,
-                    history: appState.history,
-                    cloudSheetUrl: appState.cloudSheetUrl || '',
-                    updatedAt: Date.now(),
-                    updatedBy: currentUser.uid
-                });
-                updateSyncBadge('synced');
-            } catch (e) {
-                console.error('雲端同步失敗:', e);
-                updateSyncBadge('error');
-                showToast('雲端同步發生異常，請檢查網路連線', 'error');
-            }
-        }
-
-        // 初始化雲端共用狀態與即時監聽
-        async function initCloudSync() {
-            // 先載入預設結構避免畫面空白
-            appState.members = JSON.parse(JSON.stringify(DEFAULT_MEMBERS));
-            appState.templates = JSON.parse(JSON.stringify(DEFAULT_TEMPLATES));
-            appState.history = [];
-            appState.currentMeeting = createSessionFromTemplate(appState.templates[0], getTodayStr(), '09:00');
-            renderRollCallBoard();
-
-            if (!firebaseConfig) {
-                updateSyncBadge('error');
-                return;
-            }
-
-            try {
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-
-                // 優先使用自訂 Token 登入，否則匿名登入
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-
-                currentUser = auth.currentUser;
-                if (!currentUser) return;
-
-                const uidEl = document.getElementById('display-user-id');
-                if (uidEl) uidEl.textContent = currentUser.uid;
-
-                // 使用公開共用路徑，讓所有開啟此系統的秘書與手機端即時共享同一份資料
-                stateDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'rollcall_system', 'shared_state');
-
-                // 檢查雲端是否已有資料，若無則寫入初始預設資料
-                const initialSnap = await getDoc(stateDocRef);
-                if (!initialSnap.exists()) {
-                    await saveState();
-                }
-
-                // 監聽雲端即時變更 (多人同時點名或手機 QR 簽到時自動更新畫面)
-                onSnapshot(stateDocRef, (snapshot) => {
-                    if (!snapshot.exists()) return;
-                    const data = snapshot.data();
-
-                    isRemoteUpdating = true;
-                    if (data.members) appState.members = data.members;
-                    if (data.templates) appState.templates = data.templates;
-                    if (data.currentMeeting) appState.currentMeeting = data.currentMeeting;
-                    if (data.history) appState.history = data.history;
-                    if (data.cloudSheetUrl !== undefined) appState.cloudSheetUrl = data.cloudSheetUrl;
-
-                    // 重新渲染目前正在檢視的頁籤
-                    const activeTab = document.querySelector('.tab-content:not(.hidden)')?.id?.replace('tab-', '') || 'rollcall';
-                    if (activeTab === 'rollcall') renderRollCallBoard();
-                    if (activeTab === 'dashboard') renderDashboard();
-                    if (activeTab === 'meetings') renderMeetingsTab();
-                    if (activeTab === 'members') renderMembersTable();
-                    if (activeTab === 'history') renderHistoryList();
-                    if (activeTab === 'analytics') renderAnalytics();
-
-                    updateSyncBadge('synced');
-                    isRemoteUpdating = false;
-                }, (error) => {
-                    console.error('雲端即時監聽錯誤:', error);
-                    updateSyncBadge('error');
-                });
-
-            } catch (err) {
-                console.error('雲端初始化失敗:', err);
-                updateSyncBadge('error');
-            }
-        }
-
         // 由範本建立點名場次
         function createSessionFromTemplate(tpl, date, time) {
             const attendees = tpl.memberIds
@@ -2256,6 +2157,19 @@
             renderMembersTable();
             renderRollCallBoard();
             showToast('已成功載入預設 19 位主管名單並更新點名看板！', 'success');
+        }
+
+        function downloadExcelTemplate() {
+            const wb = XLSX.utils.book_new();
+            const templateData = [
+                ['姓名', '單位', '職稱'],
+                ['王小明', '院長室', '專員'],
+                ['陳美麗', '護理部', '督導']
+            ];
+            const ws = XLSX.utils.aoa_to_sheet(templateData);
+            XLSX.utils.book_append_sheet(wb, ws, '人員匯入範本');
+            XLSX.writeFile(wb, `院長室點名系統_人員匯入範本.xlsx`);
+            showToast('已下載 Excel 匯入範本！', 'success');
         }
 
         function handleExcelImport(event) {
