@@ -405,6 +405,9 @@
                         <p class="text-xs text-slate-500 mt-0.5">支援手動新增、大頭照上傳、Excel 批次匯入及卡片顯示排序</p>
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
+                        <button onclick="openCloudLinkModal()" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-cloud-arrow-down"></i> 雲端試算表連結同步
+                        </button>
                         <button onclick="downloadExcelTemplate()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition flex items-center gap-1.5">
                             <i class="fa-solid fa-file-arrow-down text-teal-600"></i> 下載 Excel 匯入範本
                         </button>
@@ -803,6 +806,57 @@
         </div>
     </div>
 
+    <!-- 6. 雲端試算表連結同步彈窗 (Google Sheets / CSV) -->
+    <div id="cloud-link-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 class="text-lg font-bold text-slate-800"><i class="fa-solid fa-link text-indigo-600 mr-2"></i>雲端試算表連結同步名單</h3>
+                <button onclick="closeModal('cloud-link-modal')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+
+            <div class="bg-indigo-50/80 p-3.5 rounded-xl border border-indigo-100 text-xs text-indigo-950 space-y-1.5">
+                <div class="font-bold"><i class="fa-solid fa-circle-info text-indigo-600 mr-1"></i>使用方式說明 (支援 Google 試算表)：</div>
+                <ol class="list-decimal list-inside space-y-1 text-indigo-900">
+                    <li>在 Google 試算表中建立三個欄位：<strong>姓名、單位、職稱</strong>。</li>
+                    <li>點選右上角「共用」設為<strong>「知道連結的任何人均可檢視」</strong>，並複製網址貼於下方（系統會自動轉換為讀取格式）。</li>
+                    <li>以後只要在 Google 試算表維護名單，回到本系統按「立即從雲端同步」即可更新！</li>
+                </ol>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">雲端試算表網址 (Google Sheets 連結或 CSV 網址) *</label>
+                <input type="url" id="cloud-sheet-url" placeholder="https://docs.google.com/spreadsheets/d/..." class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1.5">同步更新模式</label>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <label class="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
+                        <input type="radio" name="cloud-sync-mode" value="merge" checked class="text-indigo-600">
+                        <div>
+                            <div class="font-bold text-slate-800">智慧合併更新</div>
+                            <div class="text-slate-500">更新同姓名資料並新增新人員，保留原有大頭照</div>
+                        </div>
+                    </label>
+                    <label class="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
+                        <input type="radio" name="cloud-sync-mode" value="replace" class="text-indigo-600">
+                        <div>
+                            <div class="font-bold text-slate-800">完全覆蓋名單</div>
+                            <div class="text-slate-500">完全以雲端試算表名單為準</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="closeModal('cloud-link-modal')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-medium">取消</button>
+                <button id="btn-execute-cloud-sync" onclick="syncMembersFromCloudLink()" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow flex items-center gap-1.5">
+                    <i class="fa-solid fa-rotate"></i> 儲存連結並立即同步
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- 訊息提示 Toast (取代 alert) -->
     <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
@@ -864,7 +918,8 @@
             members: [],
             templates: [],
             currentMeeting: null,
-            history: []
+            history: [],
+            cloudSheetUrl: ''
         };
 
         // 取得今日 YYYY-MM-DD
@@ -909,6 +964,7 @@
                     templates: appState.templates,
                     currentMeeting: appState.currentMeeting,
                     history: appState.history,
+                    cloudSheetUrl: appState.cloudSheetUrl || '',
                     updatedAt: Date.now(),
                     updatedBy: currentUser.uid
                 });
@@ -971,6 +1027,7 @@
                     if (data.templates) appState.templates = data.templates;
                     if (data.currentMeeting) appState.currentMeeting = data.currentMeeting;
                     if (data.history) appState.history = data.history;
+                    if (data.cloudSheetUrl !== undefined) appState.cloudSheetUrl = data.cloudSheetUrl;
 
                     // 重新渲染目前正在檢視的頁籤
                     const activeTab = document.querySelector('.tab-content:not(.hidden)')?.id?.replace('tab-', '') || 'rollcall';
@@ -2065,6 +2122,125 @@
         }
 
         // ---------------------------------------------------------------------
+        // 8.5 雲端試算表連結同步 (Google Sheets / CSV URL)
+        // ---------------------------------------------------------------------
+        function openCloudLinkModal() {
+            document.getElementById('cloud-sheet-url').value = appState.cloudSheetUrl || '';
+            openModal('cloud-link-modal');
+        }
+
+        // 自動將一般 Google Sheets 網址轉換為 CSV 匯出網址
+        function normalizeCloudSheetUrl(rawUrl) {
+            const url = rawUrl.trim();
+            const gsMatch = url.match(/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+            if (gsMatch && !url.includes('/export?') && !url.includes('output=csv')) {
+                const sheetId = gsMatch[1];
+                const gidMatch = url.match(/gid=([0-9]+)/);
+                const gidParam = gidMatch ? `&gid=${gidMatch[1]}` : '';
+                return `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv${gidParam}`;
+            }
+            return url;
+        }
+
+        async function syncMembersFromCloudLink() {
+            const rawUrl = document.getElementById('cloud-sheet-url').value.trim();
+            if (!rawUrl) {
+                showToast('請輸入雲端試算表連結網址', 'error');
+                return;
+            }
+
+            const mode = document.querySelector('input[name="cloud-sync-mode"]:checked')?.value || 'merge';
+            const fetchUrl = normalizeCloudSheetUrl(rawUrl);
+            const btn = document.getElementById('btn-execute-cloud-sync');
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 正在讀取雲端檔案...';
+
+            try {
+                const response = await fetch(fetchUrl);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                const csvText = await response.text();
+
+                // 檢查是否誤抓到 Google 登入 HTML 頁面 (權限未公開)
+                if (csvText.trim().startsWith('<!DOCTYPE html') || csvText.includes('<html')) {
+                    throw new Error('PERMISSION_DENIED');
+                }
+
+                // 使用 SheetJS 解析 CSV 文字 (完美處理中文與引號逗號)
+                const workbook = XLSX.read(csvText, { type: 'string' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(firstSheet);
+
+                const parsedList = [];
+                rows.forEach((row) => {
+                    const name = (row['姓名'] || row['Name'] || '').toString().trim();
+                    const dept = (row['單位'] || row['Department'] || '').toString().trim();
+                    const title = (row['職稱'] || row['Title'] || '').toString().trim();
+                    if (name && dept && title) {
+                        parsedList.push({ name, dept, title });
+                    }
+                });
+
+                if (parsedList.length === 0) {
+                    showToast('雲端檔案中找不到有效的「姓名、單位、職稱」資料列', 'error');
+                    return;
+                }
+
+                appState.cloudSheetUrl = rawUrl;
+
+                if (mode === 'replace') {
+                    appState.members = parsedList.map((item, idx) => {
+                        const existing = appState.members.find(m => m.name === item.name);
+                        return {
+                            id: existing ? existing.id : 'm_' + Date.now() + '_' + idx,
+                            name: item.name,
+                            dept: item.dept,
+                            title: item.title,
+                            rank: inferRankFromTitle(item.title),
+                            avatar: existing ? existing.avatar : ''
+                        };
+                    });
+                } else {
+                    // 智慧合併更新：同姓名更新單位與職稱，新姓名新增卡片
+                    parsedList.forEach((item, idx) => {
+                        const existing = appState.members.find(m => m.name === item.name);
+                        if (existing) {
+                            existing.dept = item.dept;
+                            existing.title = item.title;
+                            existing.rank = inferRankFromTitle(item.title);
+                        } else {
+                            appState.members.push({
+                                id: 'm_' + Date.now() + '_' + idx,
+                                name: item.name,
+                                dept: item.dept,
+                                title: item.title,
+                                rank: inferRankFromTitle(item.title),
+                                avatar: ''
+                            });
+                        }
+                    });
+                }
+
+                await saveState();
+                renderMembersTable();
+                closeModal('cloud-link-modal');
+                showToast(`雲端名單同步成功！已載入 ${parsedList.length} 筆資料並同步至所有裝置`, 'success');
+            } catch (err) {
+                console.error('雲端試算表同步失敗:', err);
+                if (err.message === 'PERMISSION_DENIED') {
+                    showToast('無法讀取試算表：請確認 Google 試算表共用權限已設為「知道連結的任何人均可檢視」', 'error');
+                } else {
+                    showToast('讀取雲端連結失敗，請確認網址正確且已開放檢視權限', 'error');
+                }
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        }
+
+        // ---------------------------------------------------------------------
         // 9. 板塊 05：歷史紀錄
         // ---------------------------------------------------------------------
         function renderHistoryList() {
@@ -2439,6 +2615,8 @@
             deleteMember,
             downloadExcelTemplate,
             handleExcelImport,
+            openCloudLinkModal,
+            syncMembersFromCloudLink,
             renderHistoryList,
             copyHistoryItem,
             viewHistoryDetail,
