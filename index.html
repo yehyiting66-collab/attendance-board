@@ -405,6 +405,9 @@
                         <p class="text-xs text-slate-500 mt-0.5">支援手動新增、大頭照上傳、Excel 批次匯入及卡片顯示排序</p>
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
+                        <button onclick="resetToDefaultMembers()" class="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-xl text-xs font-semibold transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-rotate-left"></i> 載入預設主管名單
+                        </button>
                         <button onclick="openCloudLinkModal()" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-sm">
                             <i class="fa-solid fa-cloud-arrow-down"></i> 雲端試算表連結同步
                         </button>
@@ -869,10 +872,12 @@
         import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // ---------------------------------------------------------------------
-        // 1. 雲端資料庫連線與系統資料狀態
+        // 1. 雲端資料庫連線與瀏覽器自動儲存 (IndexedDB 離線持久化)
         // ---------------------------------------------------------------------
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const BROWSER_DB_NAME = 'SuperintendentRollCallBrowserDB';
+        const BROWSER_STORE_NAME = 'appStateStore';
 
         let db = null;
         let auth = null;
@@ -880,20 +885,27 @@
         let stateDocRef = null;
         let isRemoteUpdating = false;
 
-        // 預設初始主管名單 (慈濟醫院院長室主管會議常用班底)
+        // 預設初始主管名單 (慈濟醫院院長室主管會議)
         const DEFAULT_MEMBERS = [
             { id: 'm1', name: '賴寧生', dept: '院長室', title: '院長', rank: 1, avatar: '' },
-            { id: 'm2', name: '陳金城', dept: '院長室', title: '副院長', rank: 2, avatar: '' },
-            { id: 'm3', name: '林名男', dept: '院長室', title: '副院長', rank: 2, avatar: '' },
-            { id: 'm4', name: '曾國藩', dept: '院長室', title: '副院長', rank: 2, avatar: '' },
-            { id: 'm5', name: '劉鎮榮', dept: '院長室', title: '主任秘書', rank: 3, avatar: '' },
-            { id: 'm6', name: '吳彬安', dept: '醫務部', title: '部主任', rank: 4, avatar: '' },
-            { id: 'm7', name: '彭淑敏', dept: '護理部', title: '部主任', rank: 4, avatar: '' },
-            { id: 'm8', name: '張菊芬', dept: '品管中心', title: '主任', rank: 5, avatar: '' },
-            { id: 'm9', name: '李啟誠', dept: '教學部', title: '部主任', rank: 4, avatar: '' },
-            { id: 'm10', name: '黃明月', dept: '醫事室', title: '主任', rank: 5, avatar: '' },
-            { id: 'm11', name: '陳星助', dept: '總務室', title: '主任', rank: 5, avatar: '' },
-            { id: 'm12', name: '林俊龍', dept: '資訊室', title: '主任', rank: 5, avatar: '' }
+            { id: 'm2', name: '簡瑞騰', dept: '斗六慈院', title: '院長', rank: 1, avatar: '' },
+            { id: 'm3', name: '陳金城', dept: '院長室', title: '副院長', rank: 2, avatar: '' },
+            { id: 'm4', name: '賴俊良', dept: '院長室', title: '副院長', rank: 2, avatar: '' },
+            { id: 'm5', name: '林庭光', dept: '院長室', title: '副院長', rank: 2, avatar: '' },
+            { id: 'm6', name: '曾國枝', dept: '院長室', title: '副院長', rank: 2, avatar: '' },
+            { id: 'm7', name: '劉鎮榮', dept: '院長室', title: '主秘', rank: 3, avatar: '' },
+            { id: 'm8', name: '陳祖裕', dept: '院長室', title: '顧問', rank: 3, avatar: '' },
+            { id: 'm9', name: '蔡任弼', dept: '嘉義診所', title: '負責醫師', rank: 4, avatar: '' },
+            { id: 'm10', name: '黃介琦', dept: '醫療部', title: '部主任', rank: 4, avatar: '' },
+            { id: 'm11', name: '曾志偉', dept: '內科部', title: '部主任', rank: 4, avatar: '' },
+            { id: 'm12', name: '許宏達', dept: '外科部', title: '部主任', rank: 4, avatar: '' },
+            { id: 'm13', name: '李宜恭', dept: '急診部', title: '部主任', rank: 4, avatar: '' },
+            { id: 'm14', name: '陳佳蓉', dept: '護理部', title: '主任', rank: 5, avatar: '' },
+            { id: 'm15', name: '陳弘美', dept: '教學部', title: '行政主任', rank: 5, avatar: '' },
+            { id: 'm16', name: '申斯靜', dept: '企劃室', title: '主任', rank: 5, avatar: '' },
+            { id: 'm17', name: '顏貴珍', dept: '醫院發展中心', title: '主任', rank: 5, avatar: '' },
+            { id: 'm18', name: '陳鈞博', dept: '斗六慈院', title: '行政主任', rank: 5, avatar: '' },
+            { id: 'm19', name: '張堂偉', dept: '嘉義診所', title: '行政主任', rank: 5, avatar: '' }
         ];
 
         // 預設固定會議範本 (依需求預設「院長室主管會議」, 主席：賴寧生院長、會議地點：慈濟部)
@@ -903,14 +915,10 @@
                 name: '院長室主管會議',
                 chair: '賴寧生院長',
                 location: '慈濟部',
-                memberIds: ['m1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9', 'm10', 'm11', 'm12']
-            },
-            {
-                id: 'tpl_medical_quality',
-                name: '醫療品質暨病人安全委員會',
-                chair: '賴寧生院長',
-                location: '第一會議室',
-                memberIds: ['m1', 'm2', 'm3', 'm5', 'm6', 'm7', 'm8']
+                memberIds: [
+                    'm1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9', 'm10',
+                    'm11', 'm12', 'm13', 'm14', 'm15', 'm16', 'm17', 'm18', 'm19'
+                ]
             }
         ];
 
@@ -946,9 +954,180 @@
             } else if (status === 'saving') {
                 badge.className = 'text-xs bg-sky-500/20 text-sky-300 border border-sky-500/40 px-2 py-0.5 rounded-full font-normal flex items-center gap-1';
                 badge.innerHTML = '<i class="fa-solid fa-rotate fa-spin"></i> 同步上傳中...';
+            } else if (status === 'local') {
+                badge.className = 'text-xs bg-teal-500/20 text-teal-300 border border-teal-500/40 px-2 py-0.5 rounded-full font-normal flex items-center gap-1';
+                badge.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> 本機自動儲存中';
             } else {
                 badge.className = 'text-xs bg-rose-500/20 text-rose-300 border border-rose-500/40 px-2 py-0.5 rounded-full font-normal flex items-center gap-1';
                 badge.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> 離線模式';
+            }
+        }
+
+        // 瀏覽器內建 IndexedDB 自動儲存與讀取 (重新開啟瀏覽器不遺失)
+        function saveToBrowserCache(stateObj) {
+            return new Promise((resolve) => {
+                try {
+                    const req = indexedDB.open(BROWSER_DB_NAME, 1);
+                    req.onupgradeneeded = (e) => {
+                        const idb = e.target.result;
+                        if (!idb.objectStoreNames.contains(BROWSER_STORE_NAME)) {
+                            idb.createObjectStore(BROWSER_STORE_NAME);
+                        }
+                    };
+                    req.onsuccess = (e) => {
+                        const idb = e.target.result;
+                        const tx = idb.transaction(BROWSER_STORE_NAME, 'readwrite');
+                        tx.objectStore(BROWSER_STORE_NAME).put(JSON.parse(JSON.stringify(stateObj)), 'latest_state');
+                        tx.oncomplete = () => resolve(true);
+                        tx.onerror = () => resolve(false);
+                    };
+                    req.onerror = () => resolve(false);
+                } catch (err) {
+                    resolve(false);
+                }
+            });
+        }
+
+        function loadFromBrowserCache() {
+            return new Promise((resolve) => {
+                try {
+                    const req = indexedDB.open(BROWSER_DB_NAME, 1);
+                    req.onupgradeneeded = (e) => {
+                        const idb = e.target.result;
+                        if (!idb.objectStoreNames.contains(BROWSER_STORE_NAME)) {
+                            idb.createObjectStore(BROWSER_STORE_NAME);
+                        }
+                    };
+                    req.onsuccess = (e) => {
+                        const idb = e.target.result;
+                        const tx = idb.transaction(BROWSER_STORE_NAME, 'readonly');
+                        const getReq = tx.objectStore(BROWSER_STORE_NAME).get('latest_state');
+                        getReq.onsuccess = () => resolve(getReq.result || null);
+                        getReq.onerror = () => resolve(null);
+                    };
+                    req.onerror = () => resolve(null);
+                } catch (err) {
+                    resolve(null);
+                }
+            });
+        }
+
+        // 儲存至瀏覽器快取並同步至雲端共用資料庫
+        async function saveState() {
+            // 無論是否有網路，第一時間自動儲存至瀏覽器中
+            await saveToBrowserCache(appState);
+
+            if (isRemoteUpdating) return;
+            if (!currentUser || !stateDocRef) {
+                updateSyncBadge('local');
+                return;
+            }
+
+            updateSyncBadge('saving');
+            try {
+                await setDoc(stateDocRef, {
+                    members: appState.members,
+                    templates: appState.templates,
+                    currentMeeting: appState.currentMeeting,
+                    history: appState.history,
+                    cloudSheetUrl: appState.cloudSheetUrl || '',
+                    updatedAt: Date.now(),
+                    updatedBy: currentUser.uid
+                });
+                updateSyncBadge('synced');
+            } catch (e) {
+                console.error('雲端同步失敗，已保留於瀏覽器本機快取:', e);
+                updateSyncBadge('local');
+            }
+        }
+
+        // 初始化雲端共用狀態與瀏覽器自動儲存還原
+        async function initCloudSync() {
+            // 1. 優先從瀏覽器快取讀取上次關閉前的完整狀態
+            const cachedState = await loadFromBrowserCache();
+            if (cachedState && cachedState.members && cachedState.templates) {
+                appState.members = cachedState.members;
+                appState.templates = cachedState.templates;
+                appState.currentMeeting = cachedState.currentMeeting || createSessionFromTemplate(appState.templates[0], getTodayStr(), '09:00');
+                appState.history = cachedState.history || [];
+                appState.cloudSheetUrl = cachedState.cloudSheetUrl || '';
+                updateSyncBadge('local');
+            } else {
+                // 若為全新瀏覽器初次開啟，載入預設結構並立即自動儲存
+                appState.members = JSON.parse(JSON.stringify(DEFAULT_MEMBERS));
+                appState.templates = JSON.parse(JSON.stringify(DEFAULT_TEMPLATES));
+                appState.history = [];
+                appState.currentMeeting = createSessionFromTemplate(appState.templates[0], getTodayStr(), '09:00');
+                await saveToBrowserCache(appState);
+            }
+            renderRollCallBoard();
+
+            if (!firebaseConfig) {
+                updateSyncBadge('local');
+                return;
+            }
+
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // 優先使用自訂 Token 登入，否則匿名登入
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                currentUser = auth.currentUser;
+                if (!currentUser) return;
+
+                const uidEl = document.getElementById('display-user-id');
+                if (uidEl) uidEl.textContent = currentUser.uid;
+
+                // 使用公開共用路徑，讓所有開啟此系統的秘書與手機端即時共享同一份資料
+                stateDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'rollcall_system', 'shared_state');
+
+                // 檢查雲端是否已有資料，若無則將瀏覽器目前資料上傳初始化
+                const initialSnap = await getDoc(stateDocRef);
+                if (!initialSnap.exists()) {
+                    await saveState();
+                }
+
+                // 監聽雲端即時變更 (多人同時點名或手機 QR 簽到時自動更新畫面並寫入瀏覽器快取)
+                onSnapshot(stateDocRef, async (snapshot) => {
+                    if (!snapshot.exists()) return;
+                    const data = snapshot.data();
+
+                    isRemoteUpdating = true;
+                    if (data.members) appState.members = data.members;
+                    if (data.templates) appState.templates = data.templates;
+                    if (data.currentMeeting) appState.currentMeeting = data.currentMeeting;
+                    if (data.history) appState.history = data.history;
+                    if (data.cloudSheetUrl !== undefined) appState.cloudSheetUrl = data.cloudSheetUrl;
+
+                    // 同步更新瀏覽器本地快取，確保離線重開也是最新狀態
+                    await saveToBrowserCache(appState);
+
+                    // 重新渲染目前正在檢視的頁籤
+                    const activeTab = document.querySelector('.tab-content:not(.hidden)')?.id?.replace('tab-', '') || 'rollcall';
+                    if (activeTab === 'rollcall') renderRollCallBoard();
+                    if (activeTab === 'dashboard') renderDashboard();
+                    if (activeTab === 'meetings') renderMeetingsTab();
+                    if (activeTab === 'members') renderMembersTable();
+                    if (activeTab === 'history') renderHistoryList();
+                    if (activeTab === 'analytics') renderAnalytics();
+
+                    updateSyncBadge('synced');
+                    isRemoteUpdating = false;
+                }, (error) => {
+                    console.error('雲端即時監聽錯誤，切換為本機自動儲存:', error);
+                    updateSyncBadge('local');
+                });
+
+            } catch (err) {
+                console.error('雲端初始化失敗，切換為本機自動儲存:', err);
+                updateSyncBadge('local');
             }
         }
 
@@ -2065,17 +2244,18 @@
             showToast(`已移除人員「${m.name}」`, 'info');
         }
 
-        // Excel 範本下載與批次匯入
-        function downloadExcelTemplate() {
-            const wsData = [
-                ['姓名', '單位', '職稱'],
-                ['王大明', '內科部', '部主任'],
-                ['陳小美', '護理部', '督導']
-            ];
-            const wb = XLSX.utils.book_new();
-            const ws = XLSX.utils.aoa_to_sheet(wsData);
-            XLSX.utils.book_append_sheet(wb, ws, '人員匯入範本');
-            XLSX.writeFile(wb, '院長室點名系統_人員匯入範本.xlsx');
+        function resetToDefaultMembers() {
+            appState.members = JSON.parse(JSON.stringify(DEFAULT_MEMBERS));
+            if (appState.templates && appState.templates.length > 0) {
+                appState.templates[0].memberIds = DEFAULT_MEMBERS.map(m => m.id);
+            } else {
+                appState.templates = JSON.parse(JSON.stringify(DEFAULT_TEMPLATES));
+            }
+            appState.currentMeeting = createSessionFromTemplate(appState.templates[0], getTodayStr(), '09:00');
+            saveState();
+            renderMembersTable();
+            renderRollCallBoard();
+            showToast('已成功載入預設 19 位主管名單並更新點名看板！', 'success');
         }
 
         function handleExcelImport(event) {
@@ -2613,6 +2793,7 @@
             handleAvatarUpload,
             saveMemberForm,
             deleteMember,
+            resetToDefaultMembers,
             downloadExcelTemplate,
             handleExcelImport,
             openCloudLinkModal,
