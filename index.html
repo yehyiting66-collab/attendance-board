@@ -125,6 +125,15 @@
                             <span><i class="fa-solid fa-user-tie text-teal-600 mr-1.5"></i>主席：<strong id="rc-meeting-chair">賴寧生院長</strong></span>
                             <span><i class="fa-solid fa-location-dot text-teal-600 mr-1.5"></i>地點：<strong id="rc-meeting-location">慈濟部</strong></span>
                         </div>
+                        <!-- 切換預排會議場次下拉選單 -->
+                        <div class="mt-2.5 flex flex-wrap items-center gap-2">
+                            <label for="rc-session-select" class="text-xs font-bold text-teal-800 bg-teal-50 px-2.5 py-1 rounded-lg border border-teal-200">
+                                <i class="fa-solid fa-calendar-days mr-1"></i>切換擬點名場次：
+                            </label>
+                            <select id="rc-session-select" onchange="switchCurrentMeetingSession(this.value)" class="px-3 py-1.5 bg-slate-50 hover:bg-white border border-slate-300 rounded-xl text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500 max-w-full sm:max-w-md">
+                                <!-- 動態載入所有已建立/預排的會議場次 -->
+                            </select>
+                        </div>
                     </div>
 
                     <!-- 即時數據膠囊 -->
@@ -299,6 +308,14 @@
                         </div>
                     </div>
 
+                    <!-- 固定會議專屬名單下拉選擇 -->
+                    <div id="m-fixed-group-wrapper">
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">選擇固定會議專屬名單</label>
+                        <select id="m-template-select" onchange="onSelectMeetingTemplate()" class="w-full px-3 py-2 bg-teal-50/70 border border-teal-300 rounded-xl text-sm font-semibold text-teal-900 focus:ring-2 focus:ring-teal-500 outline-none">
+                            <!-- 動態載入 -->
+                        </select>
+                    </div>
+
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">會議名稱</label>
                         <input type="text" id="m-title" value="院長室主管會議" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none" placeholder="請輸入會議名稱">
@@ -333,7 +350,10 @@
 
                     <div class="pt-2 flex flex-col gap-2">
                         <button onclick="startNewMeetingSession()" class="w-full py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl shadow transition flex items-center justify-center gap-2">
-                            <i class="fa-solid fa-play"></i> 載入名單並開始本次點名
+                            <i class="fa-solid fa-play"></i> 載入名單並立即開始點名
+                        </button>
+                        <button onclick="addScheduledMeeting()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-xs transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-calendar-plus"></i> 加入預排會議清單
                         </button>
                         <button id="btn-save-template" onclick="saveAsFixedTemplate()" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition">
                             <i class="fa-solid fa-bookmark mr-1"></i> 將目前設定儲存為新「固定會議範本」
@@ -341,53 +361,82 @@
                     </div>
                 </div>
 
-                <!-- 右側：固定會議專屬名單群組設定 -->
-                <div class="lg:col-span-2 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <!-- 右側：已預排會議場次清單 + 固定會議專屬名單群組設定 -->
+                <div class="lg:col-span-2 space-y-6">
+                    <!-- 已預排 / 待點名會議場次清單 -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                            <div>
+                                <h2 class="text-lg font-bold text-slate-800">
+                                    <i class="fa-solid fa-list-check text-indigo-600 mr-2"></i>已預排 / 待點名會議場次清單
+                                </h2>
+                                <p class="text-xs text-slate-500 mt-0.5">可預先建立多場會議，點擊「切換點名」或直接於「03 即時點名」下拉選取場次</p>
+                            </div>
+                            <span id="scheduled-meetings-count" class="px-2.5 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full text-xs font-bold">共 1 場</span>
+                        </div>
+                        <div id="scheduled-meetings-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[260px] overflow-y-auto pr-1">
+                            <!-- 動態生成預排會議卡片 -->
+                        </div>
+                    </div>
+
+                    <!-- 固定會議專屬名單群組設定 -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
                     <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
                         <div>
                             <h2 class="text-lg font-bold text-slate-800">
                                 <i class="fa-solid fa-users-rectangle text-teal-600 mr-2"></i>固定會議專屬出席名單設定
                             </h2>
-                            <p class="text-xs text-slate-500 mt-0.5">勾選屬於此固定會議的常設與會人員，下次開啟該會議時自動帶入</p>
+                            <p class="text-xs text-slate-500 mt-0.5">選擇已設定之固定會議群組，點擊「編修名單」進行修改並「確認儲存」</p>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <select id="edit-template-select" onchange="renderTemplateMembersEditor()" class="px-3 py-1.5 bg-teal-50 border border-teal-200 text-teal-900 font-semibold rounded-xl text-sm">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <select id="edit-template-select" onchange="onChangeEditTemplateSelect()" class="px-3 py-1.5 bg-teal-50 border border-teal-200 text-teal-900 font-semibold rounded-xl text-sm">
                                 <!-- 動態載入 -->
                             </select>
+                            <button id="btn-edit-template" onclick="setTemplateEditMode(true)" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold shadow-xs transition">
+                                <i class="fa-solid fa-pen-to-square mr-1"></i>編修名單
+                            </button>
+                            <button id="btn-confirm-template" onclick="confirmTemplateEdits()" class="hidden px-3.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-sm transition">
+                                <i class="fa-solid fa-check mr-1"></i>確認儲存
+                            </button>
                             <button onclick="createNewTemplatePrompt()" class="px-3 py-1.5 bg-slate-800 text-white rounded-xl text-xs font-medium hover:bg-slate-700">
                                 + 新增群組
+                            </button>
+                            <button onclick="deleteCurrentTemplate()" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-xl text-xs font-medium transition" title="刪除此固定會議群組">
+                                <i class="fa-solid fa-trash-can mr-1"></i>刪除群組
                             </button>
                         </div>
                     </div>
 
-                    <!-- 群組預設資訊編輯 -->
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
                         <div>
-                            <label class="text-xs text-slate-500">預設會議名稱</label>
-                            <input type="text" id="tpl-name" onchange="updateTemplateMeta()" class="w-full mt-0.5 px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-sm">
+                            <label class="block text-[11px] font-semibold text-slate-500 mb-1">群組會議名稱</label>
+                            <input type="text" id="tpl-name" onchange="updateTemplateMeta()" class="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-sm font-semibold disabled:bg-slate-100 disabled:text-slate-600">
                         </div>
                         <div>
-                            <label class="text-xs text-slate-500">預設主席</label>
-                            <input type="text" id="tpl-chair" list="chair-options" onchange="updateTemplateMeta()" class="w-full mt-0.5 px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-sm">
+                            <label class="block text-[11px] font-semibold text-slate-500 mb-1">預設主席</label>
+                            <input type="text" id="tpl-chair" onchange="updateTemplateMeta()" class="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-sm disabled:bg-slate-100 disabled:text-slate-600">
                         </div>
                         <div>
-                            <label class="text-xs text-slate-500">預設地點</label>
-                            <input type="text" id="tpl-location" onchange="updateTemplateMeta()" class="w-full mt-0.5 px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-sm">
+                            <label class="block text-[11px] font-semibold text-slate-500 mb-1">預設地點</label>
+                            <input type="text" id="tpl-location" onchange="updateTemplateMeta()" class="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-sm disabled:bg-slate-100 disabled:text-slate-600">
                         </div>
                     </div>
 
-                    <!-- 人員勾選清單 -->
                     <div class="flex items-center justify-between text-xs text-slate-600">
-                        <span>已勾選 <strong id="tpl-selected-count" class="text-teal-600 text-sm">0</strong> 位常設與會人員</span>
-                        <div class="space-x-2">
-                            <button onclick="toggleAllTemplateMembers(true)" class="text-teal-600 hover:underline">全選</button>
-                            <span>|</span>
-                            <button onclick="toggleAllTemplateMembers(false)" class="text-slate-500 hover:underline">全不選</button>
+                        <div class="flex items-center gap-2">
+                            <span>已設定應出席人員：<strong id="tpl-selected-count" class="text-teal-700 text-sm">0</strong> 人</span>
+                            <span id="tpl-mode-badge" class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-200 text-slate-700">檢視模式</span>
+                        </div>
+                        <div id="tpl-bulk-actions" class="hidden space-x-2">
+                            <button type="button" onclick="toggleAllTemplateMembers(true)" class="text-teal-600 hover:underline font-medium">全選</button>
+                            <span class="text-slate-300">|</span>
+                            <button type="button" onclick="toggleAllTemplateMembers(false)" class="text-slate-500 hover:underline">全取消</button>
                         </div>
                     </div>
 
-                    <div id="template-members-checklist" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 max-h-[420px] overflow-y-auto p-1">
-                        <!-- 動態生成勾選框 -->
+                    <div id="template-members-checklist" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 max-h-[380px] overflow-y-auto pr-1">
+                        <!-- 動態生成勾選清單 -->
+                    </div>
                     </div>
                 </div>
             </div>
@@ -396,88 +445,68 @@
         <!-- =====================================================================
              板塊 01：名單管理
         ====================================================================== -->
-        <section id="tab-members" class="tab-content hidden space-y-6">
-            <!-- 頂部工具列：新增人員、Excel 匯入/範本下載、排序與備份 -->
+        <section id="tab-members" class="tab-content hidden space-y-5">
             <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-4">
                     <div>
-                        <h2 class="text-xl font-bold text-slate-800"><i class="fa-solid fa-address-book text-teal-600 mr-2"></i>全院主管與與會人員資料庫</h2>
-                        <p class="text-xs text-slate-500 mt-0.5">支援手動新增、大頭照上傳、Excel 批次匯入及卡片顯示排序</p>
+                        <h2 class="text-xl font-bold text-slate-800"><i class="fa-solid fa-users-gear text-teal-600 mr-2"></i>與會人員名單管理</h2>
+                        <p class="text-xs text-slate-500 mt-0.5">支援手動新增修改、大頭照上傳、Excel 批次匯入、雲端試算表同步與完整資料備份</p>
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
-                        <button onclick="resetToDefaultMembers()" class="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-xl text-xs font-semibold transition flex items-center gap-1.5">
-                            <i class="fa-solid fa-rotate-left"></i> 載入預設主管名單
-                        </button>
-                        <button onclick="openCloudLinkModal()" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-sm">
-                            <i class="fa-solid fa-cloud-arrow-down"></i> 雲端試算表連結同步
-                        </button>
-                        <button onclick="downloadExcelTemplate()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition flex items-center gap-1.5">
-                            <i class="fa-solid fa-file-arrow-down text-teal-600"></i> 下載 Excel 匯入範本
-                        </button>
-                        <label class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-sm">
-                            <i class="fa-solid fa-file-excel"></i> Excel 批次匯入
-                            <input type="file" id="excel-upload" accept=".xlsx, .xls, .csv" onchange="handleExcelImport(event)" class="hidden">
-                        </label>
-                        <button onclick="openMemberModal()" class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow">
+                        <button onclick="openMemberModal()" class="px-3.5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm transition flex items-center gap-1.5">
                             <i class="fa-solid fa-plus"></i> 新增人員
                         </button>
+                        <label class="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs sm:text-sm font-semibold cursor-pointer transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-excel"></i> Excel 批次匯入
+                            <input type="file" accept=".xlsx,.xls,.csv" onchange="handleExcelImport(event)" class="hidden">
+                        </label>
+                        <button onclick="downloadExcelTemplate()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium transition">
+                            下載範本
+                        </button>
+                        <button onclick="openCloudLinkModal()" class="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-link"></i> 雲端試算表連結同步
+                        </button>
+                        <button onclick="resetToDefaultMembers()" class="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-xl text-xs font-semibold transition">
+                            載入預設19人名單
+                        </button>
                     </div>
                 </div>
 
-                <!-- 搜尋與排序控制 -->
+                <!-- 搜尋、排序與備份工具列 -->
                 <div class="flex flex-wrap items-center justify-between gap-3">
-                    <div class="relative flex-1 min-w-[220px] max-w-md">
-                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-                        <input type="text" id="member-search" oninput="renderMembersTable()" placeholder="搜尋姓名、單位或職稱..." class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                    <div class="flex flex-wrap items-center gap-2 flex-1 min-w-[240px]">
+                        <div class="relative flex-1 max-w-xs">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                            <input type="text" id="member-search" oninput="renderMembersTable()" placeholder="搜尋姓名、單位或職稱..." class="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                        </div>
+                        <button onclick="sortMembers('rank')" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition">
+                            <i class="fa-solid fa-arrow-down-short-wide mr-1"></i>依職級排序
+                        </button>
+                        <button onclick="sortMembers('dept')" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition">
+                            <i class="fa-solid fa-building mr-1"></i>依單位排序
+                        </button>
                     </div>
 
-                    <div class="flex items-center gap-2 text-sm">
-                        <span class="text-slate-500 text-xs">卡片排序方式：</span>
-                        <select id="member-sort-select" onchange="sortMembers(this.value)" class="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700">
-                            <option value="custom">自訂順序 (可使用上下箭頭調整)</option>
-                            <option value="rank">依職級排序 (院長→副院長→主秘→主任...)</option>
-                            <option value="dept">依單位名稱排序</option>
-                        </select>
+                    <div class="flex items-center gap-2">
+                        <button onclick="exportBackupJSON()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-medium transition">
+                            <i class="fa-solid fa-download mr-1"></i> 備份資料(.json)
+                        </button>
+                        <label class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium cursor-pointer transition">
+                            <i class="fa-solid fa-upload mr-1"></i> 還原備份
+                            <input type="file" accept=".json" onchange="importBackupJSON(event)" class="hidden">
+                        </label>
                     </div>
                 </div>
-            </div>
 
-            <!-- 人員列表表格 -->
-            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase">
-                                <th class="py-3.5 px-4 w-20 text-center">排序</th>
-                                <th class="py-3.5 px-4 w-16">大頭照</th>
-                                <th class="py-3.5 px-4">姓名</th>
-                                <th class="py-3.5 px-4">單位</th>
-                                <th class="py-3.5 px-4">職稱</th>
-                                <th class="py-3.5 px-4 text-center">歷史出席率</th>
-                                <th class="py-3.5 px-4 text-right">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="members-table-body" class="divide-y divide-slate-100 text-sm">
-                            <!-- 動態生成 -->
-                        </tbody>
-                    </table>
+                <!-- 拖曳提示 -->
+                <div class="flex items-center justify-between text-xs text-slate-500 bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-200/70">
+                    <span><i class="fa-solid fa-grip-vertical text-teal-600 mr-1.5"></i><strong>提示：</strong>可直接按住人員小卡片拖曳移動調整順序（搜尋篩選時暫停拖曳），變更會自動儲存並同步至點名看板。</span>
+                    <span id="members-total-badge" class="font-semibold text-teal-700">共 0 人</span>
                 </div>
-            </div>
 
-            <!-- 系統資料備份與還原區塊 -->
-            <div class="bg-slate-800 text-white p-5 rounded-2xl flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <h3 class="font-bold text-base flex items-center gap-2"><i class="fa-solid fa-cloud text-teal-400"></i> 雲端多人即時共用與備份還原</h3>
-                    <p class="text-xs text-slate-300 mt-1">所有名單、會議設定與即時點名狀態皆已啟用雲端多人即時同步。操作 ID：<span id="display-user-id" class="font-mono text-teal-300 select-all">連線中...</span></p>
-                </div>
-                <div class="flex items-center gap-2">
-                    <button onclick="exportBackupJSON()" class="px-3.5 py-2 bg-slate-700 hover:bg-slate-600 rounded-xl text-xs font-semibold transition flex items-center gap-1.5">
-                        <i class="fa-solid fa-download"></i> 匯出完整備份 (.json)
-                    </button>
-                    <label class="px-3.5 py-2 bg-teal-600 hover:bg-teal-500 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer">
-                        <i class="fa-solid fa-upload"></i> 還原備份檔
-                        <input type="file" accept=".json" onchange="importBackupJSON(event)" class="hidden">
-                    </label>
+                <!-- 人員小卡片看板 Grid -->
+                <div id="members-cards-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
+                    <!-- 動態生成 -->
                 </div>
             </div>
         </section>
@@ -485,523 +514,435 @@
         <!-- =====================================================================
              板塊 05：歷史紀錄
         ====================================================================== -->
-        <section id="tab-history" class="tab-content hidden space-y-6">
-            <div class="flex flex-wrap items-center justify-between gap-3">
+        <section id="tab-history" class="tab-content hidden space-y-5">
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h2 class="text-xl font-bold text-slate-800"><i class="fa-solid fa-clock-rotate-left text-teal-600 mr-2"></i>歷次會議點名歷史紀錄</h2>
-                    <p class="text-xs text-slate-500 mt-0.5">點擊任一會議可檢視完整出席明細、一鍵複製會議紀錄或匯出 Excel</p>
+                    <p class="text-xs text-slate-500 mt-0.5">點擊「檢視明細」可查看完整簽到時間與複製會議紀錄名單</p>
                 </div>
-                <div class="flex items-center gap-2">
-                    <input type="text" id="history-search" oninput="renderHistoryList()" placeholder="搜尋會議名稱或日期..." class="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm">
+                <div class="relative w-full sm:w-64">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                    <input type="text" id="history-search" oninput="renderHistoryList()" placeholder="搜尋會議主題、日期或主席..." class="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 outline-none">
                 </div>
             </div>
 
-            <div id="history-list" class="space-y-4">
-                <!-- 動態生成歷史會議卡片 -->
+            <div id="history-list" class="space-y-3">
+                <!-- 動態生成 -->
             </div>
         </section>
 
         <!-- =====================================================================
-             板塊 06：統計分析 & Excel 報表匯出
+             板塊 06：統計分析
         ====================================================================== -->
         <section id="tab-analytics" class="tab-content hidden space-y-6">
-            <!-- 報表匯出與篩選控制列 -->
             <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-4">
                 <div>
-                    <h2 class="text-xl font-bold text-slate-800"><i class="fa-solid fa-chart-line text-teal-600 mr-2"></i>出席率統計分析與異常預警</h2>
-                    <p class="text-xs text-slate-500 mt-0.5">自動追蹤歷次會議出席表現，標示經常缺席、遲到或出席率偏低人員</p>
+                    <h2 class="text-xl font-bold text-slate-800"><i class="fa-solid fa-chart-line text-teal-600 mr-2"></i>會議出席統計分析與報表匯出</h2>
+                    <p class="text-xs text-slate-500 mt-0.5">自動偵測經常缺席、遲到或出席率偏低人員，支援匯出月報、季報與年報 Excel</p>
                 </div>
-
                 <div class="flex flex-wrap items-center gap-2">
-                    <select id="analytics-period" onchange="renderAnalytics()" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium">
+                    <select id="analytics-period" onchange="renderAnalytics()" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700">
                         <option value="all">全部歷史期間</option>
-                        <option value="month">本月統計 (月報)</option>
-                        <option value="quarter">本季統計 (季報)</option>
-                        <option value="year">本年度統計 (年報)</option>
+                        <option value="month">本月統計</option>
+                        <option value="quarter">本季統計</option>
+                        <option value="year">本年度統計</option>
                     </select>
-                    <button onclick="exportAnalyticsExcel('month')" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
-                        <i class="fa-solid fa-file-excel"></i> 匯出月報 Excel
+                    <button onclick="exportAnalyticsExcel('month')" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition">
+                        <i class="fa-solid fa-file-excel mr-1"></i> 匯出月報
                     </button>
-                    <button onclick="exportAnalyticsExcel('quarter')" class="px-3.5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
-                        <i class="fa-solid fa-file-excel"></i> 匯出季報 Excel
+                    <button onclick="exportAnalyticsExcel('quarter')" class="px-3 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-sm transition">
+                        <i class="fa-solid fa-file-excel mr-1"></i> 匯出季報
                     </button>
-                    <button onclick="exportAnalyticsExcel('year')" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
-                        <i class="fa-solid fa-file-excel"></i> 匯出年報 Excel
+                    <button onclick="exportAnalyticsExcel('year')" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold shadow-sm transition">
+                        <i class="fa-solid fa-file-excel mr-1"></i> 匯出年報
                     </button>
                 </div>
             </div>
 
             <!-- 出席率異常提醒區 -->
-            <div class="bg-rose-50 border border-rose-200 rounded-2xl p-5">
-                <h3 class="font-bold text-rose-800 flex items-center gap-2 mb-3">
-                    <i class="fa-solid fa-triangle-exclamation text-rose-600"></i> 出席異常預警名單 (缺席 ≥ 2次 或 出席率低於 70% 或 遲到 ≥ 2次)
+            <div class="bg-rose-50/80 border border-rose-200 rounded-2xl p-5 space-y-3">
+                <h3 class="font-bold text-rose-800 flex items-center gap-2">
+                    <i class="fa-solid fa-triangle-exclamation text-rose-600"></i> 出席率異常提醒（缺席 ≥ 2次、遲到 ≥ 2次 或 出席率低於 70%）
                 </h3>
                 <div id="anomaly-cards" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     <!-- 動態生成 -->
                 </div>
             </div>
 
+            <!-- 各單位 & 各會議分析 -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- 各單位平均出席率 -->
                 <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                    <h3 class="font-bold text-slate-800 mb-4"><i class="fa-solid fa-sitemap text-teal-600 mr-2"></i>各單位歷次平均出席率</h3>
-                    <div id="analytics-dept-bars" class="space-y-3">
-                        <!-- 動態生成 -->
-                    </div>
+                    <h3 class="font-bold text-slate-800 mb-4"><i class="fa-solid fa-building text-teal-600 mr-2"></i>各單位平均出席率</h3>
+                    <div id="analytics-dept-bars" class="space-y-3"></div>
                 </div>
-
-                <!-- 各委員會/固定會議平均出席率 -->
                 <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                    <h3 class="font-bold text-slate-800 mb-4"><i class="fa-solid fa-people-group text-teal-600 mr-2"></i>各會議 / 委員會平均出席率</h3>
-                    <div id="analytics-meeting-bars" class="space-y-3">
-                        <!-- 動態生成 -->
-                    </div>
+                    <h3 class="font-bold text-slate-800 mb-4"><i class="fa-solid fa-sitemap text-indigo-600 mr-2"></i>各會議 / 委員會平均出席率</h3>
+                    <div id="analytics-meeting-bars" class="space-y-3"></div>
                 </div>
             </div>
 
-            <!-- 各主管個人詳細出席統計表 -->
-            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <div class="p-4 border-b border-slate-100 font-bold text-slate-800">
-                    <i class="fa-solid fa-user-check text-teal-600 mr-2"></i>各主管個人出席統計明細
-                </div>
-                <div class="overflow-x-auto">
+            <!-- 個人出席明細總表 -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                <h3 class="font-bold text-slate-800"><i class="fa-solid fa-table-list text-teal-600 mr-2"></i>各主管歷次出席明細統計表</h3>
+                <div class="overflow-x-auto rounded-xl border border-slate-200">
                     <table class="w-full text-left border-collapse text-sm">
                         <thead>
-                            <tr class="bg-slate-50 border-b border-slate-200 text-xs text-slate-600">
+                            <tr class="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-600">
                                 <th class="py-3 px-4">姓名</th>
                                 <th class="py-3 px-4">單位</th>
                                 <th class="py-3 px-4">職稱</th>
-                                <th class="py-3 px-4 text-center">應出席次數</th>
-                                <th class="py-3 px-4 text-center text-emerald-600">準時出席</th>
-                                <th class="py-3 px-4 text-center text-amber-600">遲到</th>
-                                <th class="py-3 px-4 text-center text-purple-600">代理出席</th>
-                                <th class="py-3 px-4 text-center text-blue-600">請假</th>
-                                <th class="py-3 px-4 text-center text-rose-600">缺席</th>
+                                <th class="py-3 px-4 text-center">應出席</th>
+                                <th class="py-3 px-4 text-center">準時</th>
+                                <th class="py-3 px-4 text-center">遲到</th>
+                                <th class="py-3 px-4 text-center">代理</th>
+                                <th class="py-3 px-4 text-center">請假</th>
+                                <th class="py-3 px-4 text-center">缺席</th>
                                 <th class="py-3 px-4 text-center">出席率</th>
                             </tr>
                         </thead>
-                        <tbody id="analytics-person-tbody" class="divide-y divide-slate-100">
-                            <!-- 動態生成 -->
-                        </tbody>
+                        <tbody id="analytics-person-tbody" class="divide-y divide-slate-100"></tbody>
                     </table>
                 </div>
             </div>
         </section>
-
     </main>
 
     <!-- =========================================================================
-         彈窗 (Modals)
+         彈跳視窗 (Modals)
     ========================================================================== -->
 
-    <!-- 1. 卡片右上角進階狀態設定彈窗 (請假、代理出席、遲到、列席) -->
-    <div id="status-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+    <!-- 1. 卡片右上角狀態設定 Modal (遲到/請假/代理/列席) -->
+    <div id="status-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-5 space-y-4">
             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 class="text-lg font-bold text-slate-800" id="sm-title">設定出席狀態</h3>
-                <button onclick="closeModal('status-modal')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+                <h3 id="sm-title" class="font-bold text-slate-800 text-base">設定人員出席狀態</h3>
+                <button onclick="closeModal('status-modal')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
-
             <input type="hidden" id="sm-member-id">
 
-            <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-2">選擇出席狀態</label>
-                <div class="grid grid-cols-2 gap-2">
-                    <button type="button" onclick="selectStatusOption('present')" class="status-opt-btn p-2.5 rounded-xl border text-sm font-semibold text-left flex items-center gap-2" data-status="present">
-                        <span class="w-3 h-3 rounded-full bg-emerald-500"></span> 已出席
-                    </button>
-                    <button type="button" onclick="selectStatusOption('late')" class="status-opt-btn p-2.5 rounded-xl border text-sm font-semibold text-left flex items-center gap-2" data-status="late">
-                        <span class="w-3 h-3 rounded-full bg-amber-500"></span> 遲到
-                    </button>
-                    <button type="button" onclick="selectStatusOption('leave')" class="status-opt-btn p-2.5 rounded-xl border text-sm font-semibold text-left flex items-center gap-2" data-status="leave">
-                        <span class="w-3 h-3 rounded-full bg-blue-500"></span> 請假
-                    </button>
-                    <button type="button" onclick="selectStatusOption('proxy')" class="status-opt-btn p-2.5 rounded-xl border text-sm font-semibold text-left flex items-center gap-2" data-status="proxy">
-                        <span class="w-3 h-3 rounded-full bg-purple-500"></span> 代理出席
-                    </button>
-                    <button type="button" onclick="selectStatusOption('absent')" class="status-opt-btn p-2.5 rounded-xl border text-sm font-semibold text-left flex items-center gap-2" data-status="absent">
-                        <span class="w-3 h-3 rounded-full bg-rose-500"></span> 缺席
-                    </button>
-                    <button type="button" onclick="selectStatusOption('unmarked')" class="status-opt-btn p-2.5 rounded-xl border text-sm font-semibold text-left flex items-center gap-2" data-status="unmarked">
-                        <span class="w-3 h-3 rounded-full bg-slate-300"></span> 重設為未簽到
-                    </button>
-                </div>
+            <div class="grid grid-cols-3 gap-2">
+                <button type="button" data-status="present" onclick="selectStatusOption('present')" class="status-opt-btn py-2 px-2 rounded-xl border border-slate-200 text-xs font-bold transition">已出席</button>
+                <button type="button" data-status="late" onclick="selectStatusOption('late')" class="status-opt-btn py-2 px-2 rounded-xl border border-slate-200 text-xs font-bold transition">遲到</button>
+                <button type="button" data-status="leave" onclick="selectStatusOption('leave')" class="status-opt-btn py-2 px-2 rounded-xl border border-slate-200 text-xs font-bold transition">請假</button>
+                <button type="button" data-status="proxy" onclick="selectStatusOption('proxy')" class="status-opt-btn py-2 px-2 rounded-xl border border-slate-200 text-xs font-bold transition">代理出席</button>
+                <button type="button" data-status="absent" onclick="selectStatusOption('absent')" class="status-opt-btn py-2 px-2 rounded-xl border border-slate-200 text-xs font-bold transition">缺席</button>
+                <button type="button" data-status="unmarked" onclick="selectStatusOption('unmarked')" class="status-opt-btn py-2 px-2 rounded-xl border border-slate-200 text-xs font-bold transition">重設未簽到</button>
             </div>
 
-            <!-- 請假事由輸入區 -->
-            <div id="sm-leave-fields" class="hidden space-y-2 bg-blue-50/70 p-3 rounded-xl border border-blue-100">
-                <label class="block text-xs font-semibold text-blue-900">請假事由 (將自動帶入複製的會議紀錄中)</label>
-                <input type="text" id="sm-leave-reason" placeholder="例如：公出、門診、休假、手術中..." class="w-full px-3 py-2 bg-white border border-blue-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+            <!-- 請假欄位 -->
+            <div id="sm-leave-fields" class="hidden space-y-2 bg-blue-50/70 p-3 rounded-xl border border-blue-200">
+                <label class="block text-xs font-bold text-blue-900">請假事由備註（將自動帶入會議紀錄未出席名單）</label>
+                <input type="text" id="sm-leave-reason" placeholder="例如：公出、門診、休假、開刀" class="w-full px-3 py-2 bg-white border border-blue-200 rounded-lg text-sm">
                 <div class="flex flex-wrap gap-1.5 pt-1">
-                    <button type="button" onclick="document.getElementById('sm-leave-reason').value='門診'" class="text-xs bg-white border border-blue-200 px-2 py-0.5 rounded-md hover:bg-blue-100">門診</button>
-                    <button type="button" onclick="document.getElementById('sm-leave-reason').value='手術'" class="text-xs bg-white border border-blue-200 px-2 py-0.5 rounded-md hover:bg-blue-100">手術</button>
-                    <button type="button" onclick="document.getElementById('sm-leave-reason').value='公出'" class="text-xs bg-white border border-blue-200 px-2 py-0.5 rounded-md hover:bg-blue-100">公出</button>
-                    <button type="button" onclick="document.getElementById('sm-leave-reason').value='休假'" class="text-xs bg-white border border-blue-200 px-2 py-0.5 rounded-md hover:bg-blue-100">休假</button>
+                    <button type="button" onclick="document.getElementById('sm-leave-reason').value='公出'" class="px-2 py-0.5 bg-white border border-blue-200 rounded text-xs text-blue-700 hover:bg-blue-100">公出</button>
+                    <button type="button" onclick="document.getElementById('sm-leave-reason').value='門診'" class="px-2 py-0.5 bg-white border border-blue-200 rounded text-xs text-blue-700 hover:bg-blue-100">門診</button>
+                    <button type="button" onclick="document.getElementById('sm-leave-reason').value='手術'" class="px-2 py-0.5 bg-white border border-blue-200 rounded text-xs text-blue-700 hover:bg-blue-100">手術</button>
+                    <button type="button" onclick="document.getElementById('sm-leave-reason').value='休假'" class="px-2 py-0.5 bg-white border border-blue-200 rounded text-xs text-blue-700 hover:bg-blue-100">休假</button>
                 </div>
             </div>
 
-            <!-- 代理人資訊輸入區 -->
-            <div id="sm-proxy-fields" class="hidden space-y-2.5 bg-purple-50/70 p-3 rounded-xl border border-purple-100">
-                <div class="text-xs font-semibold text-purple-900">代理人登錄資料</div>
+            <!-- 代理出席欄位 -->
+            <div id="sm-proxy-fields" class="hidden space-y-2.5 bg-purple-50/70 p-3 rounded-xl border border-purple-200">
+                <div>
+                    <label class="block text-xs font-bold text-purple-900 mb-1">代理人姓名 *</label>
+                    <input type="text" id="sm-proxy-name" placeholder="請輸入代理人姓名" class="w-full px-3 py-1.5 bg-white border border-purple-200 rounded-lg text-sm">
+                </div>
                 <div class="grid grid-cols-2 gap-2">
                     <div>
-                        <label class="block text-[11px] text-purple-800 mb-0.5">代理人姓名 *</label>
-                        <input type="text" id="sm-proxy-name" placeholder="輸入姓名" class="w-full px-2.5 py-1.5 bg-white border border-purple-200 rounded-lg text-sm">
+                        <label class="block text-xs font-bold text-purple-900 mb-1">代理人職稱</label>
+                        <input type="text" id="sm-proxy-title" placeholder="例如：副主任、組長" class="w-full px-3 py-1.5 bg-white border border-purple-200 rounded-lg text-sm">
                     </div>
                     <div>
-                        <label class="block text-[11px] text-purple-800 mb-0.5">代理人職稱</label>
-                        <input type="text" id="sm-proxy-title" placeholder="例如：副主任" class="w-full px-2.5 py-1.5 bg-white border border-purple-200 rounded-lg text-sm">
+                        <label class="block text-xs font-bold text-purple-900 mb-1">代理原因</label>
+                        <input type="text" id="sm-proxy-reason" placeholder="例如：門診、公出" class="w-full px-3 py-1.5 bg-white border border-purple-200 rounded-lg text-sm">
                     </div>
-                </div>
-                <div>
-                    <label class="block text-[11px] text-purple-800 mb-0.5">代理原因</label>
-                    <input type="text" id="sm-proxy-reason" placeholder="例如：主任公出由副主任代理" class="w-full px-2.5 py-1.5 bg-white border border-purple-200 rounded-lg text-sm">
                 </div>
             </div>
 
-            <!-- 身分角色切換 (正式應出席 vs 列席) -->
-            <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
-                <span class="text-xs font-semibold text-slate-700">本次會議與會身分：</span>
-                <label class="inline-flex items-center cursor-pointer gap-2">
-                    <input type="checkbox" id="sm-is-observer" class="rounded text-teal-600 focus:ring-teal-500 w-4 h-4">
-                    <span class="text-sm text-slate-700">設為「列席人員」(不計入應出席分母)</span>
-                </label>
-            </div>
+            <label class="flex items-center gap-2 p-2.5 bg-amber-50/70 border border-amber-200 rounded-xl cursor-pointer">
+                <input type="checkbox" id="sm-is-observer" class="w-4 h-4 text-amber-600 rounded">
+                <span class="text-xs font-semibold text-amber-900">標記為「列席人員」（不計入應出席分母，獨立列於會議紀錄列席名單）</span>
+            </label>
 
             <div class="flex justify-end gap-2 pt-2">
                 <button onclick="closeModal('status-modal')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-medium">取消</button>
-                <button onclick="saveMemberStatus()" class="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-sm font-bold shadow">確認儲存</button>
+                <button onclick="saveMemberStatus()" class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-sm font-bold">儲存狀態</button>
             </div>
         </div>
     </div>
 
-    <!-- 2. 新增/修改人員彈窗 (板塊 01) -->
-    <div id="member-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+    <!-- 2. 單次列席 / 新增與會人員 Modal -->
+    <div id="quick-add-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-5 space-y-4">
             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 class="text-lg font-bold text-slate-800" id="mm-modal-title">新增人員資料</h3>
-                <button onclick="closeModal('member-modal')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+                <h3 class="font-bold text-slate-800 text-base"><i class="fa-solid fa-user-plus text-amber-600 mr-1.5"></i>新增單次列席 / 與會人員</h3>
+                <button onclick="closeModal('quick-add-modal')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">姓名 *</label>
+                    <input type="text" id="qa-name" placeholder="請輸入姓名" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">單位 *</label>
+                    <input type="text" id="qa-dept" placeholder="例如：資訊室、總務室" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">職稱 *</label>
+                    <input type="text" id="qa-title" placeholder="例如：主任、專員" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm">
+                </div>
+                <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                    <input type="checkbox" id="qa-is-observer" checked class="w-4 h-4 text-teal-600 rounded">
+                    <span>設為「列席人員」（取消勾選則計入正式應出席人員）</span>
+                </label>
+                <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                    <input type="checkbox" id="qa-save-to-db" class="w-4 h-4 text-teal-600 rounded">
+                    <span>同步存入永久人員資料庫</span>
+                </label>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="closeModal('quick-add-modal')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-medium">取消</button>
+                <button onclick="submitQuickAdd()" class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-sm font-bold">產生專屬點名卡片</button>
+            </div>
+        </div>
+    </div>
 
+    <!-- 3. QR Code 自助簽到 Modal -->
+    <div id="qr-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-5 space-y-4 text-center">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 class="font-bold text-slate-800 text-base"><i class="fa-solid fa-qrcode text-indigo-600 mr-1.5"></i>QR Code 自助簽到終端</h3>
+                <button onclick="closeModal('qr-modal')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <p class="text-xs text-slate-500">與會主管可使用手機掃描條碼，或直接於下方選擇姓名完成自助簽到並記錄時間</p>
+            <div id="qrcode-container" class="flex justify-center p-4 bg-white border border-slate-200 rounded-2xl w-fit mx-auto shadow-inner"></div>
+            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2 text-left">
+                <label class="block text-xs font-bold text-slate-700">快速自助簽到（選擇您的姓名）：</label>
+                <div class="flex gap-2">
+                    <select id="qr-self-checkin-select" class="flex-1 px-3 py-2 bg-white border border-slate-300 rounded-xl text-sm"></select>
+                    <button onclick="executeSelfCheckIn()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold">立即簽到</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. 新增/修改人員 Modal -->
+    <div id="member-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-5 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 id="mm-modal-title" class="font-bold text-slate-800 text-base">新增人員資料</h3>
+                <button onclick="closeModal('member-modal')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
             <input type="hidden" id="mm-id">
-
-            <!-- 大頭照上傳與預覽 -->
             <div class="flex items-center gap-4">
-                <img id="mm-avatar-preview" src="https://placehold.co/100x100/0d9488/ffffff?text=頭像" class="w-16 h-16 rounded-full object-cover border-2 border-teal-500 shadow-sm">
-                <div class="space-y-1">
-                    <label class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer inline-flex items-center gap-1.5">
-                        <i class="fa-solid fa-camera"></i> 上傳大頭照
+                <img id="mm-avatar-preview" src="https://placehold.co/100x100/0d9488/ffffff?text=頭像" class="w-16 h-16 rounded-full object-cover border-2 border-teal-500">
+                <div>
+                    <label class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer inline-block">
+                        <i class="fa-solid fa-camera mr-1"></i> 上傳大頭照
                         <input type="file" accept="image/*" onchange="handleAvatarUpload(event)" class="hidden">
                     </label>
-                    <p class="text-[11px] text-slate-400">支援 JPG/PNG，系統會自動壓縮最佳化</p>
+                    <p class="text-[11px] text-slate-400 mt-1">自動壓縮裁切，支援 JPG / PNG</p>
                 </div>
             </div>
-
-            <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">姓名 *</label>
-                <input type="text" id="mm-name" placeholder="請輸入姓名" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-teal-500">
-            </div>
-
-            <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">單位 *</label>
-                <input type="text" id="mm-dept" placeholder="例如：院長室、醫務部、護理部..." class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-teal-500">
-            </div>
-
-            <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">職稱 *</label>
-                <input type="text" id="mm-title" placeholder="例如：院長、副院長、主任秘書、部主任..." class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-teal-500">
-            </div>
-
-            <div class="flex justify-end gap-2 pt-3">
-                <button onclick="closeModal('member-modal')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-medium">取消</button>
-                <button onclick="saveMemberForm()" class="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-sm font-bold shadow">儲存人員</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 3. 單次會議快速新增人員/列席彈窗 -->
-    <div id="quick-add-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 class="text-lg font-bold text-slate-800"><i class="fa-solid fa-user-plus text-amber-500 mr-2"></i>新增本次會議與會 / 列席人員</h3>
-                <button onclick="closeModal('quick-add-modal')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
-            </div>
-            <p class="text-xs text-slate-500">可自行輸入其他主管或列席人員之姓名、單位及職稱，按下新增即可產生專屬點名卡片。</p>
-
-            <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">姓名 *</label>
-                <input type="text" id="qa-name" placeholder="請輸入姓名" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm">
-            </div>
-            <div class="grid grid-cols-2 gap-3">
+            <div class="space-y-3">
                 <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">單位 *</label>
-                    <input type="text" id="qa-dept" placeholder="請輸入單位" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm">
+                    <label class="block text-xs font-bold text-slate-600 mb-1">姓名 *</label>
+                    <input type="text" id="mm-name" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">職稱 *</label>
-                    <input type="text" id="qa-title" placeholder="請輸入職稱" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm">
+                    <label class="block text-xs font-bold text-slate-600 mb-1">單位 *</label>
+                    <input type="text" id="mm-dept" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">職稱 *</label>
+                    <input type="text" id="mm-title" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm">
                 </div>
             </div>
-            <div class="bg-amber-50 p-3 rounded-xl border border-amber-200 space-y-2">
-                <label class="flex items-center gap-2 text-sm font-medium text-amber-900 cursor-pointer">
-                    <input type="checkbox" id="qa-is-observer" checked class="rounded text-amber-600 w-4 h-4">
-                    設為「單次列席人員」 (列於會議紀錄之列席人員)
-                </label>
-                <label class="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
-                    <input type="checkbox" id="qa-save-to-db" class="rounded text-teal-600 w-4 h-4">
-                    同時永久加入「01 名單管理」資料庫
-                </label>
-            </div>
-
             <div class="flex justify-end gap-2 pt-2">
-                <button onclick="closeModal('quick-add-modal')" class="px-4 py-2 bg-slate-100 rounded-xl text-sm">取消</button>
-                <button onclick="submitQuickAdd()" class="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-sm font-bold shadow">新增並產生卡片</button>
+                <button onclick="closeModal('member-modal')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-medium">取消</button>
+                <button onclick="saveMemberForm()" class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-sm font-bold">儲存資料</button>
             </div>
         </div>
     </div>
 
-    <!-- 4. QR Code 自助簽到彈窗 -->
-    <div id="qr-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-center">
+    <!-- 5. 雲端試算表連結同步 Modal -->
+    <div id="cloud-link-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-5 space-y-4">
             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 class="text-lg font-bold text-slate-800"><i class="fa-solid fa-qrcode text-indigo-600 mr-2"></i>QR Code 手機自助簽到</h3>
-                <button onclick="closeModal('qr-modal')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+                <h3 class="font-bold text-slate-800 text-base"><i class="fa-solid fa-link text-indigo-600 mr-1.5"></i>雲端試算表連結同步 (Google Sheets)</h3>
+                <button onclick="closeModal('cloud-link-modal')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
-            <p class="text-xs text-slate-500">請與會人員使用手機掃描下方條碼，或使用下方「模擬手機自助簽到機」進行現場快速簽到：</p>
-
-            <div class="flex justify-center py-2">
-                <div id="qrcode-container" class="p-3 bg-white border-2 border-indigo-100 rounded-2xl shadow-inner"></div>
-            </div>
-
-            <!-- 內建手機自助簽到模擬器 (確保單機離線/無後端時也能完整操作體驗) -->
-            <div class="bg-indigo-50 p-3.5 rounded-xl border border-indigo-100 text-left space-y-2">
-                <div class="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
-                    <i class="fa-solid fa-mobile-screen-button"></i> 現場自助簽到模擬終端 (選擇姓名立即簽到)
-                </div>
-                <div class="flex gap-2">
-                    <select id="qr-self-checkin-select" class="flex-1 px-3 py-2 bg-white border border-indigo-200 rounded-xl text-sm">
-                        <!-- 動態載入未簽到人員 -->
-                    </select>
-                    <button onclick="executeSelfCheckIn()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow">
-                        立即簽到
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 5. 歷史會議詳情檢視彈窗 -->
-    <div id="history-detail-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 class="text-lg font-bold text-slate-800" id="hd-title">會議紀錄詳情</h3>
-                <button onclick="closeModal('history-detail-modal')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
-            </div>
-            <div id="hd-content" class="overflow-y-auto flex-1 space-y-4 pr-1 text-sm">
-                <!-- 動態填入 -->
-            </div>
-            <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
-                <button id="hd-copy-btn" class="px-4 py-2 bg-slate-800 text-white rounded-xl text-xs font-bold hover:bg-slate-700">
-                    <i class="fa-regular fa-copy mr-1"></i> 複製會議紀錄文字
-                </button>
-                <button onclick="closeModal('history-detail-modal')" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-medium">關閉</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 6. 雲端試算表連結同步彈窗 (Google Sheets / CSV) -->
-    <div id="cloud-link-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 class="text-lg font-bold text-slate-800"><i class="fa-solid fa-link text-indigo-600 mr-2"></i>雲端試算表連結同步名單</h3>
-                <button onclick="closeModal('cloud-link-modal')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
-            </div>
-
-            <div class="bg-indigo-50/80 p-3.5 rounded-xl border border-indigo-100 text-xs text-indigo-950 space-y-1.5">
-                <div class="font-bold"><i class="fa-solid fa-circle-info text-indigo-600 mr-1"></i>使用方式說明 (支援 Google 試算表)：</div>
-                <ol class="list-decimal list-inside space-y-1 text-indigo-900">
-                    <li>在 Google 試算表中建立三個欄位：<strong>姓名、單位、職稱</strong>。</li>
-                    <li>點選右上角「共用」設為<strong>「知道連結的任何人均可檢視」</strong>，並複製網址貼於下方（系統會自動轉換為讀取格式）。</li>
-                    <li>以後只要在 Google 試算表維護名單，回到本系統按「立即從雲端同步」即可更新！</li>
-                </ol>
-            </div>
-
-            <div>
-                <label class="block text-xs font-semibold text-slate-700 mb-1">雲端試算表網址 (Google Sheets 連結或 CSV 網址) *</label>
-                <input type="url" id="cloud-sheet-url" placeholder="https://docs.google.com/spreadsheets/d/..." class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500">
-            </div>
-
-            <div>
-                <label class="block text-xs font-semibold text-slate-700 mb-1.5">同步更新模式</label>
-                <div class="grid grid-cols-2 gap-2 text-xs">
-                    <label class="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
+            <div class="space-y-3 text-xs text-slate-600">
+                <p>請貼上 Google 試算表共用連結（需包含「<strong>姓名、單位、職稱</strong>」三欄，且權限設為「知道連結的任何人均可檢視」）：</p>
+                <input type="url" id="cloud-sheet-url" placeholder="https://docs.google.com/spreadsheets/d/..." class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm text-slate-800">
+                <div class="space-y-1.5 pt-1">
+                    <label class="flex items-center gap-2 cursor-pointer">
                         <input type="radio" name="cloud-sync-mode" value="merge" checked class="text-indigo-600">
-                        <div>
-                            <div class="font-bold text-slate-800">智慧合併更新</div>
-                            <div class="text-slate-500">更新同姓名資料並新增新人員，保留原有大頭照</div>
-                        </div>
+                        <span><strong>智慧合併更新</strong>（更新既有同仁單位職稱、新增新人員，並保留大頭照）</span>
                     </label>
-                    <label class="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
+                    <label class="flex items-center gap-2 cursor-pointer">
                         <input type="radio" name="cloud-sync-mode" value="replace" class="text-indigo-600">
-                        <div>
-                            <div class="font-bold text-slate-800">完全覆蓋名單</div>
-                            <div class="text-slate-500">完全以雲端試算表名單為準</div>
-                        </div>
+                        <span><strong>完全覆蓋名單</strong>（以雲端試算表名單為準）</span>
                     </label>
                 </div>
             </div>
-
             <div class="flex justify-end gap-2 pt-2">
                 <button onclick="closeModal('cloud-link-modal')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-medium">取消</button>
-                <button id="btn-execute-cloud-sync" onclick="syncMembersFromCloudLink()" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow flex items-center gap-1.5">
-                    <i class="fa-solid fa-rotate"></i> 儲存連結並立即同步
+                <button id="btn-execute-cloud-sync" onclick="syncMembersFromCloudLink()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold flex items-center gap-1.5">
+                    <i class="fa-solid fa-rotate"></i> 立即讀取並同步
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- 訊息提示 Toast (取代 alert) -->
-    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+    <!-- 6. 歷史紀錄明細檢視 Modal -->
+    <div id="history-detail-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-5 space-y-4 max-h-[85vh] flex flex-col">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 id="hd-title" class="font-bold text-slate-800 text-base">會議點名明細</h3>
+                <button onclick="closeModal('history-detail-modal')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div id="hd-content" class="overflow-y-auto space-y-3 text-sm flex-1 pr-1"></div>
+            <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <button id="hd-copy-btn" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-sm font-medium">
+                    <i class="fa-regular fa-copy mr-1"></i> 複製會議紀錄名單
+                </button>
+                <button onclick="closeModal('history-detail-modal')" class="px-4 py-2 bg-teal-600 text-white rounded-xl text-sm font-bold">關閉</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast 提示訊息 -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none"></div>
 
     <!-- =========================================================================
-         JavaScript 核心邏輯 (雲端多人即時共用版)
+         主要應用程式邏輯 (雲端即時同步 + 瀏覽器自動儲存備援)
     ========================================================================== -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // ---------------------------------------------------------------------
-        // 1. 雲端資料庫連線與瀏覽器自動儲存 (IndexedDB 離線持久化)
+        // 1. 預設名單與預設固定會議範本
         // ---------------------------------------------------------------------
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-        const BROWSER_DB_NAME = 'SuperintendentRollCallBrowserDB';
-        const BROWSER_STORE_NAME = 'appStateStore';
-
-        let db = null;
-        let auth = null;
-        let currentUser = null;
-        let stateDocRef = null;
-        let isRemoteUpdating = false;
-
-        // 預設初始主管名單 (慈濟醫院院長室主管會議)
         const DEFAULT_MEMBERS = [
-            { id: 'm1', name: '賴寧生', dept: '院長室', title: '院長', rank: 1, avatar: '' },
-            { id: 'm2', name: '簡瑞騰', dept: '斗六慈院', title: '院長', rank: 1, avatar: '' },
-            { id: 'm3', name: '陳金城', dept: '院長室', title: '副院長', rank: 2, avatar: '' },
-            { id: 'm4', name: '賴俊良', dept: '院長室', title: '副院長', rank: 2, avatar: '' },
-            { id: 'm5', name: '林庭光', dept: '院長室', title: '副院長', rank: 2, avatar: '' },
-            { id: 'm6', name: '曾國枝', dept: '院長室', title: '副院長', rank: 2, avatar: '' },
-            { id: 'm7', name: '劉鎮榮', dept: '院長室', title: '主秘', rank: 3, avatar: '' },
-            { id: 'm8', name: '陳祖裕', dept: '院長室', title: '顧問', rank: 3, avatar: '' },
-            { id: 'm9', name: '蔡任弼', dept: '嘉義診所', title: '負責醫師', rank: 4, avatar: '' },
-            { id: 'm10', name: '黃介琦', dept: '醫療部', title: '部主任', rank: 4, avatar: '' },
-            { id: 'm11', name: '曾志偉', dept: '內科部', title: '部主任', rank: 4, avatar: '' },
-            { id: 'm12', name: '許宏達', dept: '外科部', title: '部主任', rank: 4, avatar: '' },
-            { id: 'm13', name: '李宜恭', dept: '急診部', title: '部主任', rank: 4, avatar: '' },
-            { id: 'm14', name: '陳佳蓉', dept: '護理部', title: '主任', rank: 5, avatar: '' },
-            { id: 'm15', name: '陳弘美', dept: '教學部', title: '行政主任', rank: 5, avatar: '' },
-            { id: 'm16', name: '申斯靜', dept: '企劃室', title: '主任', rank: 5, avatar: '' },
-            { id: 'm17', name: '顏貴珍', dept: '醫院發展中心', title: '主任', rank: 5, avatar: '' },
-            { id: 'm18', name: '陳鈞博', dept: '斗六慈院', title: '行政主任', rank: 5, avatar: '' },
-            { id: 'm19', name: '張堂偉', dept: '嘉義診所', title: '行政主任', rank: 5, avatar: '' }
+            { id: 'm_01', name: '賴寧生', dept: '院長室', title: '院長', rank: 1, avatar: '' },
+            { id: 'm_02', name: '簡瑞騰', dept: '斗六慈院', title: '院長', rank: 1, avatar: '' },
+            { id: 'm_03', name: '陳金城', dept: '院長室', title: '副院長', rank: 2, avatar: '' },
+            { id: 'm_04', name: '賴俊良', dept: '院長室', title: '副院長', rank: 2, avatar: '' },
+            { id: 'm_05', name: '林庭光', dept: '院長室', title: '副院長', rank: 2, avatar: '' },
+            { id: 'm_06', name: '曾國枝', dept: '院長室', title: '副院長', rank: 2, avatar: '' },
+            { id: 'm_07', name: '劉鎮榮', dept: '院長室', title: '主秘', rank: 3, avatar: '' },
+            { id: 'm_08', name: '陳祖裕', dept: '院長室', title: '顧問', rank: 3, avatar: '' },
+            { id: 'm_09', name: '蔡任弼', dept: '嘉義診所', title: '負責醫師', rank: 4, avatar: '' },
+            { id: 'm_10', name: '黃介琦', dept: '醫療部', title: '部主任', rank: 4, avatar: '' },
+            { id: 'm_11', name: '曾志偉', dept: '內科部', title: '部主任', rank: 4, avatar: '' },
+            { id: 'm_12', name: '許宏達', dept: '外科部', title: '部主任', rank: 4, avatar: '' },
+            { id: 'm_13', name: '李宜恭', dept: '急診部', title: '部主任', rank: 4, avatar: '' },
+            { id: 'm_14', name: '陳佳蓉', dept: '護理部', title: '主任', rank: 5, avatar: '' },
+            { id: 'm_15', name: '陳弘美', dept: '教學部', title: '行政主任', rank: 5, avatar: '' },
+            { id: 'm_16', name: '申斯靜', dept: '企劃室', title: '主任', rank: 5, avatar: '' },
+            { id: 'm_17', name: '顏貴珍', dept: '醫院發展中心', title: '主任', rank: 5, avatar: '' },
+            { id: 'm_18', name: '陳鈞博', dept: '斗六慈院', title: '行政主任', rank: 5, avatar: '' },
+            { id: 'm_19', name: '張堂偉', dept: '嘉義診所', title: '行政主任', rank: 5, avatar: '' }
         ];
 
-        // 預設固定會議範本 (依需求預設「院長室主管會議」, 主席：賴寧生院長、會議地點：慈濟部)
         const DEFAULT_TEMPLATES = [
             {
                 id: 'tpl_superintendent',
                 name: '院長室主管會議',
                 chair: '賴寧生院長',
                 location: '慈濟部',
-                memberIds: [
-                    'm1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9', 'm10',
-                    'm11', 'm12', 'm13', 'm14', 'm15', 'm16', 'm17', 'm18', 'm19'
-                ]
+                memberIds: DEFAULT_MEMBERS.map(m => m.id)
             }
         ];
 
-        let appState = {
-            members: [],
-            templates: [],
-            currentMeeting: null,
-            history: [],
-            cloudSheetUrl: ''
-        };
-
-        // 取得今日 YYYY-MM-DD
         function getTodayStr() {
             const d = new Date();
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
         }
 
-        // 取得現在時間 HH:MM
         function getNowTimeStr() {
             const d = new Date();
             return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
         }
 
-        function updateSyncBadge(status) {
-            const badge = document.getElementById('cloud-sync-badge');
-            if (!badge) return;
-            if (status === 'synced') {
-                badge.className = 'text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-normal flex items-center gap-1';
-                badge.innerHTML = '<i class="fa-solid fa-cloud-check"></i> 雲端多人同步中';
-            } else if (status === 'saving') {
-                badge.className = 'text-xs bg-sky-500/20 text-sky-300 border border-sky-500/40 px-2 py-0.5 rounded-full font-normal flex items-center gap-1';
-                badge.innerHTML = '<i class="fa-solid fa-rotate fa-spin"></i> 同步上傳中...';
-            } else if (status === 'local') {
-                badge.className = 'text-xs bg-teal-500/20 text-teal-300 border border-teal-500/40 px-2 py-0.5 rounded-full font-normal flex items-center gap-1';
-                badge.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> 本機自動儲存中';
-            } else {
-                badge.className = 'text-xs bg-rose-500/20 text-rose-300 border border-rose-500/40 px-2 py-0.5 rounded-full font-normal flex items-center gap-1';
-                badge.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> 離線模式';
-            }
+        function createSessionFromTemplate(tpl, dateStr, timeStr) {
+            const targetMembers = appState.members.filter(m => tpl.memberIds.includes(m.id));
+            return {
+                id: 'mtg_' + Date.now(),
+                type: 'fixed',
+                templateId: tpl.id,
+                title: tpl.name,
+                date: dateStr,
+                time: timeStr,
+                chair: tpl.chair,
+                location: tpl.location,
+                attendees: targetMembers.map(m => ({
+                    memberId: m.id,
+                    name: m.name,
+                    dept: m.dept,
+                    title: m.title,
+                    avatar: m.avatar || '',
+                    status: 'unmarked',
+                    checkInTime: '',
+                    leaveReason: '',
+                    proxyName: '',
+                    proxyTitle: '',
+                    proxyReason: '',
+                    isObserver: false
+                }))
+            };
         }
 
-        // 瀏覽器內建 IndexedDB 自動儲存與讀取 (重新開啟瀏覽器不遺失)
+        let appState = {
+            members: JSON.parse(JSON.stringify(DEFAULT_MEMBERS)),
+            templates: JSON.parse(JSON.stringify(DEFAULT_TEMPLATES)),
+            scheduledMeetings: [],
+            currentMeeting: null,
+            history: [],
+            cloudSheetUrl: ''
+        };
+        appState.currentMeeting = createSessionFromTemplate(appState.templates[0], getTodayStr(), '09:00');
+        appState.scheduledMeetings = [appState.currentMeeting];
+
+        // ---------------------------------------------------------------------
+        // 2. 瀏覽器 IndexedDB 自動儲存備援 & Firebase 雲端即時同步
+        // ---------------------------------------------------------------------
+        const IDB_NAME = 'SuperintendentRollCallDB';
+        const IDB_STORE = 'stateStore';
+
         function saveToBrowserCache(stateObj) {
-            return new Promise((resolve) => {
-                try {
-                    const req = indexedDB.open(BROWSER_DB_NAME, 1);
-                    req.onupgradeneeded = (e) => {
-                        const idb = e.target.result;
-                        if (!idb.objectStoreNames.contains(BROWSER_STORE_NAME)) {
-                            idb.createObjectStore(BROWSER_STORE_NAME);
-                        }
-                    };
-                    req.onsuccess = (e) => {
-                        const idb = e.target.result;
-                        const tx = idb.transaction(BROWSER_STORE_NAME, 'readwrite');
-                        tx.objectStore(BROWSER_STORE_NAME).put(JSON.parse(JSON.stringify(stateObj)), 'latest_state');
-                        tx.oncomplete = () => resolve(true);
-                        tx.onerror = () => resolve(false);
-                    };
-                    req.onerror = () => resolve(false);
-                } catch (err) {
-                    resolve(false);
-                }
-            });
+            try {
+                const req = indexedDB.open(IDB_NAME, 1);
+                req.onupgradeneeded = (e) => {
+                    e.target.result.createObjectStore(IDB_STORE);
+                };
+                req.onsuccess = (e) => {
+                    const db = e.target.result;
+                    const tx = db.transaction(IDB_STORE, 'readwrite');
+                    tx.objectStore(IDB_STORE).put(stateObj, 'latestState');
+                };
+            } catch (err) {
+                console.warn('Browser cache write skipped:', err);
+            }
         }
 
         function loadFromBrowserCache() {
             return new Promise((resolve) => {
                 try {
-                    const req = indexedDB.open(BROWSER_DB_NAME, 1);
+                    const req = indexedDB.open(IDB_NAME, 1);
                     req.onupgradeneeded = (e) => {
-                        const idb = e.target.result;
-                        if (!idb.objectStoreNames.contains(BROWSER_STORE_NAME)) {
-                            idb.createObjectStore(BROWSER_STORE_NAME);
-                        }
+                        e.target.result.createObjectStore(IDB_STORE);
                     };
                     req.onsuccess = (e) => {
-                        const idb = e.target.result;
-                        const tx = idb.transaction(BROWSER_STORE_NAME, 'readonly');
-                        const getReq = tx.objectStore(BROWSER_STORE_NAME).get('latest_state');
+                        const db = e.target.result;
+                        const tx = db.transaction(IDB_STORE, 'readonly');
+                        const getReq = tx.objectStore(IDB_STORE).get('latestState');
                         getReq.onsuccess = () => resolve(getReq.result || null);
                         getReq.onerror = () => resolve(null);
                     };
@@ -1012,236 +953,196 @@
             });
         }
 
-        // 儲存至瀏覽器快取並同步至雲端共用資料庫
-        async function saveState() {
-            // 無論是否有網路，第一時間自動儲存至瀏覽器中
-            await saveToBrowserCache(appState);
+        let firestoreDocRef = null;
+        let currentUser = null;
+        let isApplyingRemoteUpdate = false;
 
-            if (isRemoteUpdating) return;
-            if (!currentUser || !stateDocRef) {
-                updateSyncBadge('local');
-                return;
-            }
-
-            updateSyncBadge('saving');
-            try {
-                await setDoc(stateDocRef, {
-                    members: appState.members,
-                    templates: appState.templates,
-                    currentMeeting: appState.currentMeeting,
-                    history: appState.history,
-                    cloudSheetUrl: appState.cloudSheetUrl || '',
-                    updatedAt: Date.now(),
-                    updatedBy: currentUser.uid
-                });
-                updateSyncBadge('synced');
-            } catch (e) {
-                console.error('雲端同步失敗，已保留於瀏覽器本機快取:', e);
-                updateSyncBadge('local');
-            }
-        }
-
-        // 初始化雲端共用狀態與瀏覽器自動儲存還原
-        async function initCloudSync() {
-            // 1. 優先從瀏覽器快取讀取上次關閉前的完整狀態
-            const cachedState = await loadFromBrowserCache();
-            if (cachedState && cachedState.members && cachedState.templates) {
-                appState.members = cachedState.members;
-                appState.templates = cachedState.templates;
-                appState.currentMeeting = cachedState.currentMeeting || createSessionFromTemplate(appState.templates[0], getTodayStr(), '09:00');
-                appState.history = cachedState.history || [];
-                appState.cloudSheetUrl = cachedState.cloudSheetUrl || '';
-                updateSyncBadge('local');
+        function updateSyncBadge(mode, text) {
+            const badge = document.getElementById('cloud-sync-badge');
+            if (!badge) return;
+            if (mode === 'cloud') {
+                badge.className = 'text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-normal flex items-center gap-1';
+                badge.innerHTML = `<i class="fa-solid fa-cloud-check"></i> ${text}`;
+            } else if (mode === 'syncing') {
+                badge.className = 'text-xs bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full font-normal flex items-center gap-1';
+                badge.innerHTML = `<i class="fa-solid fa-arrows-rotate fa-spin"></i> ${text}`;
             } else {
-                // 若為全新瀏覽器初次開啟，載入預設結構並立即自動儲存
-                appState.members = JSON.parse(JSON.stringify(DEFAULT_MEMBERS));
-                appState.templates = JSON.parse(JSON.stringify(DEFAULT_TEMPLATES));
-                appState.history = [];
-                appState.currentMeeting = createSessionFromTemplate(appState.templates[0], getTodayStr(), '09:00');
-                await saveToBrowserCache(appState);
+                badge.className = 'text-xs bg-sky-500/20 text-sky-300 border border-sky-500/40 px-2 py-0.5 rounded-full font-normal flex items-center gap-1';
+                badge.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> ${text}`;
             }
-            renderRollCallBoard();
+        }
 
-            if (!firebaseConfig) {
-                updateSyncBadge('local');
-                return;
+        async function saveState() {
+            saveToBrowserCache(appState);
+            if (!firestoreDocRef || !currentUser || isApplyingRemoteUpdate) return;
+            try {
+                updateSyncBadge('syncing', '同步中...');
+                await setDoc(firestoreDocRef, {
+                    payload: JSON.stringify(appState),
+                    updatedAt: Date.now()
+                });
+                updateSyncBadge('cloud', '雲端多人即時同步中');
+            } catch (err) {
+                console.warn('Firestore save failed, kept in browser cache:', err);
+                updateSyncBadge('local', '本機自動儲存中');
             }
+        }
+
+        async function initCloudSync() {
+            const cached = await loadFromBrowserCache();
+            if (cached && cached.members && cached.currentMeeting) {
+                appState = cached;
+                if (!Array.isArray(appState.scheduledMeetings) || appState.scheduledMeetings.length === 0) {
+                    appState.scheduledMeetings = [appState.currentMeeting];
+                }
+            }
+            renderAllActiveViews();
 
             try {
+                if (typeof __firebase_config === 'undefined') {
+                    updateSyncBadge('local', '本機自動儲存中');
+                    return;
+                }
+                const firebaseConfig = JSON.parse(__firebase_config);
+                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
                 const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
+                const auth = getAuth(app);
+                const db = getFirestore(app);
 
-                // 優先使用自訂 Token 登入，否則匿名登入
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
+                    const cred = await signInWithCustomToken(auth, __initial_auth_token);
+                    currentUser = cred.user;
                 } else {
-                    await signInAnonymously(auth);
+                    const cred = await signInAnonymously(auth);
+                    currentUser = cred.user;
                 }
 
-                currentUser = auth.currentUser;
                 if (!currentUser) return;
+                firestoreDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'rollCallSystem', 'sharedState');
 
-                const uidEl = document.getElementById('display-user-id');
-                if (uidEl) uidEl.textContent = currentUser.uid;
-
-                // 使用公開共用路徑，讓所有開啟此系統的秘書與手機端即時共享同一份資料
-                stateDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'rollcall_system', 'shared_state');
-
-                // 檢查雲端是否已有資料，若無則將瀏覽器目前資料上傳初始化
-                const initialSnap = await getDoc(stateDocRef);
-                if (!initialSnap.exists()) {
-                    await saveState();
-                }
-
-                // 監聽雲端即時變更 (多人同時點名或手機 QR 簽到時自動更新畫面並寫入瀏覽器快取)
-                onSnapshot(stateDocRef, async (snapshot) => {
-                    if (!snapshot.exists()) return;
-                    const data = snapshot.data();
-
-                    isRemoteUpdating = true;
-                    if (data.members) appState.members = data.members;
-                    if (data.templates) appState.templates = data.templates;
-                    if (data.currentMeeting) appState.currentMeeting = data.currentMeeting;
-                    if (data.history) appState.history = data.history;
-                    if (data.cloudSheetUrl !== undefined) appState.cloudSheetUrl = data.cloudSheetUrl;
-
-                    // 同步更新瀏覽器本地快取，確保離線重開也是最新狀態
-                    await saveToBrowserCache(appState);
-
-                    // 重新渲染目前正在檢視的頁籤
-                    const activeTab = document.querySelector('.tab-content:not(.hidden)')?.id?.replace('tab-', '') || 'rollcall';
-                    if (activeTab === 'rollcall') renderRollCallBoard();
-                    if (activeTab === 'dashboard') renderDashboard();
-                    if (activeTab === 'meetings') renderMeetingsTab();
-                    if (activeTab === 'members') renderMembersTable();
-                    if (activeTab === 'history') renderHistoryList();
-                    if (activeTab === 'analytics') renderAnalytics();
-
-                    updateSyncBadge('synced');
-                    isRemoteUpdating = false;
+                onSnapshot(firestoreDocRef, (snap) => {
+                    if (snap.exists() && snap.data().payload) {
+                        try {
+                            const remoteState = JSON.parse(snap.data().payload);
+                            if (remoteState && remoteState.members && remoteState.currentMeeting) {
+                                isApplyingRemoteUpdate = true;
+                                appState = remoteState;
+                                if (!Array.isArray(appState.scheduledMeetings) || appState.scheduledMeetings.length === 0) {
+                                    appState.scheduledMeetings = [appState.currentMeeting];
+                                }
+                                saveToBrowserCache(appState);
+                                renderAllActiveViews();
+                                isApplyingRemoteUpdate = false;
+                            }
+                        } catch (e) {
+                            console.error('Parse remote state error:', e);
+                        }
+                    } else {
+                        saveState();
+                    }
+                    updateSyncBadge('cloud', '雲端多人即時同步中');
                 }, (error) => {
-                    console.error('雲端即時監聽錯誤，切換為本機自動儲存:', error);
-                    updateSyncBadge('local');
+                    console.warn('Snapshot listener error:', error);
+                    updateSyncBadge('local', '本機自動儲存中');
                 });
-
             } catch (err) {
-                console.error('雲端初始化失敗，切換為本機自動儲存:', err);
-                updateSyncBadge('local');
+                console.warn('Firebase init fallback to local mode:', err);
+                updateSyncBadge('local', '本機自動儲存中');
             }
         }
 
-        // 由範本建立點名場次
-        function createSessionFromTemplate(tpl, date, time) {
-            const attendees = tpl.memberIds
-                .map(id => appState.members.find(m => m.id === id))
-                .filter(Boolean)
-                .map(m => ({
-                    memberId: m.id,
-                    name: m.name,
-                    dept: m.dept,
-                    title: m.title,
-                    avatar: m.avatar || '',
-                    status: 'unmarked', // unmarked, present, late, leave, proxy, absent
-                    checkInTime: '',
-                    leaveReason: '',
-                    proxyName: '',
-                    proxyTitle: '',
-                    proxyReason: '',
-                    isObserver: false
-                }));
-
-            return {
-                id: 'mtg_' + Date.now(),
-                type: 'fixed',
-                templateId: tpl.id,
-                title: tpl.name,
-                date: date || getTodayStr(),
-                time: time || '09:00',
-                chair: tpl.chair,
-                location: tpl.location,
-                attendees: attendees
-            };
-        }
-
         // ---------------------------------------------------------------------
-        // 2. UI 輔助工具 (Toast 訊息、Modal 控制、頭像生成)
+        // 3. UI 通用工具 (分頁切換、Modal、Toast、頭像產生)
         // ---------------------------------------------------------------------
-        function showToast(message, type = 'success') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            const colors = {
-                success: 'bg-slate-800 text-white border-l-4 border-teal-400',
-                error: 'bg-rose-600 text-white border-l-4 border-rose-200',
-                info: 'bg-indigo-600 text-white border-l-4 border-indigo-200'
-            };
-            toast.className = `${colors[type] || colors.success} px-4 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2.5 transition-all duration-300 transform translate-y-2 opacity-0`;
-            const icon = type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check';
-            toast.innerHTML = `<i class="fa-solid ${icon}"></i><span>${message}</span>`;
-            container.appendChild(toast);
+        let currentTab = 'rollcall';
 
-            requestAnimationFrame(() => {
-                toast.classList.remove('translate-y-2', 'opacity-0');
+        function switchTab(tabName) {
+            currentTab = tabName;
+            document.querySelectorAll('.tab-content').forEach(sec => sec.classList.add('hidden'));
+            const target = document.getElementById(`tab-${tabName}`);
+            if (target) target.classList.remove('hidden');
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                if (btn.id === `nav-${tabName}`) {
+                    btn.className = 'nav-btn px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition flex items-center gap-1.5 bg-teal-600 text-white shadow';
+                } else {
+                    btn.className = 'nav-btn px-3 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center gap-1.5';
+                }
             });
 
-            setTimeout(() => {
-                toast.classList.add('opacity-0', 'translate-y-2');
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
+            renderAllActiveViews();
+        }
+
+        function renderAllActiveViews() {
+            renderRollCallBoard();
+            if (currentTab === 'dashboard') renderDashboard();
+            if (currentTab === 'meetings') renderMeetingsTab();
+            if (currentTab === 'members') renderMembersTable();
+            if (currentTab === 'history') renderHistoryList();
+            if (currentTab === 'analytics') renderAnalytics();
         }
 
         function openModal(id) {
             const el = document.getElementById(id);
-            el.classList.remove('hidden');
-            el.classList.add('flex');
+            if (el) el.classList.remove('hidden');
         }
 
         function closeModal(id) {
             const el = document.getElementById(id);
-            el.classList.add('hidden');
-            el.classList.remove('flex');
+            if (el) el.classList.add('hidden');
         }
 
-        function getAvatarUrl(member) {
-            if (member.avatar && member.avatar.startsWith('data:image')) {
-                return member.avatar;
-            }
-            const firstChar = member.name ? member.name.charAt(0) : '員';
-            return `https://placehold.co/100x100/0f766e/ffffff?text=${encodeURIComponent(firstChar)}`;
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            const colors = {
+                success: 'bg-slate-900 text-white border-teal-500',
+                info: 'bg-slate-800 text-slate-100 border-sky-400',
+                error: 'bg-rose-900 text-white border-rose-400'
+            };
+            const icons = {
+                success: 'fa-circle-check text-teal-400',
+                info: 'fa-circle-info text-sky-400',
+                error: 'fa-circle-exclamation text-rose-300'
+            };
+            const toast = document.createElement('div');
+            toast.className = `px-4 py-3 rounded-xl shadow-lg border-l-4 text-sm font-medium flex items-center gap-2.5 transition-all duration-300 ${colors[type] || colors.success}`;
+            toast.innerHTML = `<i class="fa-solid ${icons[type] || icons.success}"></i><span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
         }
 
-        // ---------------------------------------------------------------------
-        // 3. 六大板塊切換控制
-        // ---------------------------------------------------------------------
-        function switchTab(tabName) {
-            document.querySelectorAll('.tab-content').forEach(sec => sec.classList.add('hidden'));
-            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
-
-            document.querySelectorAll('.nav-btn').forEach(btn => {
-                btn.classList.remove('bg-teal-600', 'text-white', 'shadow');
-                btn.classList.add('text-slate-300', 'hover:bg-slate-800');
-            });
-            const activeBtn = document.getElementById(`nav-${tabName}`);
-            activeBtn.classList.add('bg-teal-600', 'text-white', 'shadow');
-            activeBtn.classList.remove('text-slate-300', 'hover:bg-slate-800');
-
-            // 切換時重新渲染對應板塊
-            if (tabName === 'rollcall') renderRollCallBoard();
-            if (tabName === 'dashboard') renderDashboard();
-            if (tabName === 'meetings') renderMeetingsTab();
-            if (tabName === 'members') renderMembersTable();
-            if (tabName === 'history') renderHistoryList();
-            if (tabName === 'analytics') renderAnalytics();
+        function getAvatarUrl(person) {
+            if (person.avatar) return person.avatar;
+            const label = encodeURIComponent((person.name || '人').slice(-2));
+            return `https://placehold.co/100x100/0f766e/ffffff?text=${label}`;
         }
 
         // ---------------------------------------------------------------------
-        // 4. 板塊 03：即時點名看板 (核心互動)
+        // 4. 板塊 03：即時點名看板渲染與互動
         // ---------------------------------------------------------------------
         function renderRollCallBoard() {
             const mtg = appState.currentMeeting;
             if (!mtg) return;
 
-            // 更新會議資訊標頭
+            // 確保當前會議存在於預排清單中，並更新場次切換下拉選單
+            if (!Array.isArray(appState.scheduledMeetings)) {
+                appState.scheduledMeetings = [mtg];
+            } else if (!appState.scheduledMeetings.some(m => m.id === mtg.id)) {
+                appState.scheduledMeetings.unshift(mtg);
+            }
+            const sessionSelect = document.getElementById('rc-session-select');
+            if (sessionSelect) {
+                sessionSelect.innerHTML = appState.scheduledMeetings.map(m => {
+                    const formalCount = (m.attendees || []).filter(a => !a.isObserver).length;
+                    const presentCount = (m.attendees || []).filter(a => !a.isObserver && ['present', 'late', 'proxy'].includes(a.status)).length;
+                    return `<option value="${m.id}" ${m.id === mtg.id ? 'selected' : ''}>${m.date} ${m.time}｜${m.title}（實到 ${presentCount}/${formalCount}）</option>`;
+                }).join('');
+            }
+
             document.getElementById('rc-meeting-type-badge').textContent = mtg.type === 'fixed' ? '固定會議' : '非固定會議';
             document.getElementById('rc-meeting-title').textContent = mtg.title;
             document.getElementById('rc-meeting-date').textContent = mtg.date;
@@ -1249,92 +1150,70 @@
             document.getElementById('rc-meeting-chair').textContent = mtg.chair;
             document.getElementById('rc-meeting-location').textContent = mtg.location;
 
-            // 計算出席統計 (列席人員不計入應出席分母)
-            const formalAttendees = mtg.attendees.filter(a => !a.isObserver);
-            const expectedCount = formalAttendees.length;
-            const presentCount = formalAttendees.filter(a => ['present', 'late', 'proxy'].includes(a.status)).length;
-            const absentOrLeaveCount = expectedCount - presentCount;
-            const rate = expectedCount > 0 ? Math.round((presentCount / expectedCount) * 100) : 0;
+            // 統計計算 (列席人員不計入應出席分母)
+            const formal = mtg.attendees.filter(a => !a.isObserver);
+            const expected = formal.length;
+            const present = formal.filter(a => ['present', 'late', 'proxy'].includes(a.status)).length;
+            const absent = expected - present;
+            const rate = expected > 0 ? Math.round((present / expected) * 100) : 0;
 
-            document.getElementById('stat-expected').textContent = expectedCount;
-            document.getElementById('stat-present').textContent = presentCount;
-            document.getElementById('stat-absent').textContent = absentOrLeaveCount;
+            document.getElementById('stat-expected').textContent = expected;
+            document.getElementById('stat-present').textContent = present;
+            document.getElementById('stat-absent').textContent = absent;
             document.getElementById('stat-rate').textContent = `${rate}%`;
 
-            // 篩選顯示
-            const filter = document.getElementById('rc-filter-status').value;
-            let filtered = mtg.attendees;
-            if (filter === 'unmarked') filtered = filtered.filter(a => a.status === 'unmarked');
-            if (filter === 'present') filtered = filtered.filter(a => ['present', 'late', 'proxy'].includes(a.status));
-            if (filter === 'leave') filtered = filtered.filter(a => ['leave', 'absent'].includes(a.status));
-            if (filter === 'observer') filtered = filtered.filter(a => a.isObserver);
+            const filterVal = document.getElementById('rc-filter-status')?.value || 'all';
+            const anomalyIds = getAnomalyMemberIds();
+
+            const filteredAttendees = mtg.attendees.filter(a => {
+                if (filterVal === 'unmarked') return a.status === 'unmarked';
+                if (filterVal === 'present') return ['present', 'late', 'proxy'].includes(a.status);
+                if (filterVal === 'leave') return ['leave', 'absent'].includes(a.status);
+                if (filterVal === 'observer') return !!a.isObserver;
+                return true;
+            });
 
             const grid = document.getElementById('rollcall-grid');
             grid.innerHTML = '';
 
-            if (filtered.length === 0) {
-                grid.innerHTML = `<div class="col-span-full text-center py-12 bg-white rounded-2xl border border-dashed border-slate-300 text-slate-400">目前篩選條件下無與會人員卡片</div>`;
-                return;
-            }
-
-            // 取得異常名單 ID 集合以便卡片提醒
-            const anomalyIds = getAnomalyMemberIds();
-
-            filtered.forEach(person => {
-                const isAnomaly = anomalyIds.has(person.memberId);
+            filteredAttendees.forEach(person => {
                 const cardStyle = getCardStatusStyle(person.status);
+                const isAnomaly = anomalyIds.has(person.memberId);
 
-                const card = document.createElement('div');
-                card.className = `member-card relative rounded-2xl border-2 p-4 cursor-pointer shadow-sm flex flex-col justify-between ${cardStyle.border} ${cardStyle.bg} ${isAnomaly ? 'anomaly-alert' : ''}`;
-
-                // 單擊卡片：直接切換「已出席」與「取消出席」
-                card.onclick = (e) => {
-                    // 若點擊右上角選單按鈕則不觸發卡片單擊
-                    if (e.target.closest('.card-menu-btn')) return;
-                    toggleCardPresence(person.memberId);
-                };
-
-                // 狀態細節副標
                 let detailHtml = '';
-                if (person.status === 'present' || person.status === 'late') {
-                    detailHtml = `<div class="text-xs font-medium ${cardStyle.text} mt-2 flex items-center gap-1"><i class="fa-regular fa-clock"></i> 簽到時間：${person.checkInTime || '--:--'}</div>`;
-                } else if (person.status === 'proxy') {
-                    detailHtml = `<div class="text-xs font-medium text-purple-800 bg-purple-100/80 px-2 py-1 rounded-lg mt-2">
-                        <i class="fa-solid fa-user-shield mr-1"></i>代理：<strong>${person.proxyName || '未填'}</strong> ${person.proxyTitle ? `(${person.proxyTitle})` : ''}
-                        ${person.proxyReason ? `<div class="text-[11px] opacity-80">原因：${person.proxyReason}</div>` : ''}
-                    </div>`;
-                } else if (person.status === 'leave') {
-                    detailHtml = `<div class="text-xs font-medium text-blue-800 bg-blue-100/80 px-2 py-1 rounded-lg mt-2">
-                        <i class="fa-solid fa-file-pen mr-1"></i>請假事由：<strong>${person.leaveReason || '請假'}</strong>
-                    </div>`;
-                } else if (person.status === 'absent') {
-                    detailHtml = `<div class="text-xs font-medium text-rose-700 mt-2"><i class="fa-solid fa-circle-xmark mr-1"></i>確認未出席</div>`;
-                } else {
-                    detailHtml = `<div class="text-xs text-slate-400 mt-2">點擊卡片立即簽到</div>`;
+                if (person.checkInTime && ['present', 'late', 'proxy'].includes(person.status)) {
+                    detailHtml += `<div class="text-[11px] font-mono ${cardStyle.text} mt-1"><i class="fa-regular fa-clock mr-1"></i>簽到：${person.checkInTime}</div>`;
+                }
+                if (person.status === 'leave' && person.leaveReason) {
+                    detailHtml += `<div class="text-[11px] text-blue-800 bg-blue-100/80 px-2 py-0.5 rounded mt-1 truncate">事由：${person.leaveReason}</div>`;
+                }
+                if (person.status === 'proxy' && person.proxyName) {
+                    detailHtml += `<div class="text-[11px] text-purple-900 bg-purple-100/80 px-2 py-0.5 rounded mt-1 truncate">代理：${person.proxyName} ${person.proxyTitle || ''}</div>`;
                 }
 
-                card.innerHTML = `
-                    <div>
-                        <div class="flex items-start justify-between gap-2">
-                            <div class="flex items-center gap-3">
-                                <div class="relative">
-                                    <img src="${getAvatarUrl(person)}" alt="${person.name}" class="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm">
-                                    ${isAnomaly ? `<span title="出席異常提醒：近期缺席/遲到較多或出席率偏低" class="absolute -top-1 -left-1 w-5 h-5 bg-rose-600 text-white rounded-full text-[10px] flex items-center justify-center shadow"><i class="fa-solid fa-exclamation"></i></span>` : ''}
-                                </div>
-                                <div>
-                                    <div class="flex items-center gap-1.5 flex-wrap">
-                                        <h3 class="font-bold text-base text-slate-900">${person.name}</h3>
-                                        ${person.isObserver ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 font-bold">列席</span>` : ''}
-                                    </div>
-                                    <p class="text-xs text-slate-600 font-medium">${person.dept} · ${person.title}</p>
-                                </div>
-                            </div>
+                const card = document.createElement('div');
+                card.className = `member-card relative rounded-2xl border-2 p-4 cursor-pointer shadow-xs flex flex-col justify-between ${cardStyle.bg} ${cardStyle.border} ${isAnomaly ? 'anomaly-alert' : ''}`;
+                card.onclick = () => toggleCardPresence(person.memberId);
 
-                            <!-- 右上角進階選單按鈕 -->
-                            <button type="button" onclick="openStatusModal('${person.memberId}')" title="設定請假、代理出席、遲到或列席" class="card-menu-btn p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-black/5 transition">
-                                <i class="fa-solid fa-ellipsis-vertical text-base px-1"></i>
-                            </button>
+                card.innerHTML = `
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <img src="${getAvatarUrl(person)}" alt="${person.name}" class="w-12 h-12 rounded-full object-cover border border-black/10 shrink-0">
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-1.5">
+                                    <h3 class="font-bold text-slate-900 text-base truncate">${person.name}</h3>
+                                    ${person.isObserver ? '<span class="px-1.5 py-0.5 bg-amber-200 text-amber-900 rounded text-[10px] font-bold shrink-0">列席</span>' : ''}
+                                    ${isAnomaly ? '<span title="歷次出席率偏低或常缺席/遲到" class="text-rose-600 text-xs shrink-0"><i class="fa-solid fa-triangle-exclamation"></i></span>' : ''}
+                                </div>
+                                <div class="text-xs text-slate-600 truncate">${person.dept}</div>
+                                <div class="text-xs font-semibold text-slate-700 truncate">${person.title}</div>
+                            </div>
                         </div>
+
+                        <!-- 右上角選單按鈕 (阻止冒泡避免觸發卡片單擊) -->
+                        <button type="button" onclick="event.stopPropagation(); openStatusModal('${person.memberId}')" class="w-8 h-8 rounded-lg hover:bg-black/10 flex items-center justify-center text-slate-600 shrink-0 transition" title="設定請假、代理或列席">
+                            <i class="fa-solid fa-ellipsis-vertical"></i>
+                        </button>
                     </div>
 
                     <div class="mt-3 pt-2.5 border-t border-black/5 flex flex-col justify-between">
@@ -1784,43 +1663,56 @@
         // 7. 板塊 02：會議管理
         // ---------------------------------------------------------------------
         let currentMeetingFormType = 'fixed';
+        let isEditingTemplate = false;
 
-        function renderMeetingsTab() {
-            document.getElementById('m-date').value = getTodayStr();
-
-            // 填入右側編輯區的範本下拉選單
-            const editTplSelect = document.getElementById('edit-template-select');
-            const optionsHtml = appState.templates.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
-            editTplSelect.innerHTML = optionsHtml;
-
-            setMeetingFormType(currentMeetingFormType);
+        function setTemplateEditMode(editing) {
+            isEditingTemplate = editing;
             renderTemplateMembersEditor();
         }
 
-        function setMeetingFormType(type) {
-            currentMeetingFormType = type;
-            const btnFixed = document.getElementById('btn-type-fixed');
-            const btnAdhoc = document.getElementById('btn-type-adhoc');
-
-            if (type === 'fixed') {
-                btnFixed.className = 'py-2 px-3 rounded-xl text-sm font-semibold border-2 border-teal-600 bg-teal-50 text-teal-800 transition';
-                btnAdhoc.className = 'py-2 px-3 rounded-xl text-sm font-semibold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition';
-                const defaultTpl = appState.templates[0];
-                if (defaultTpl) {
-                    document.getElementById('m-title').value = defaultTpl.name;
-                    document.getElementById('m-chair').value = defaultTpl.chair;
-                    document.getElementById('m-location').value = defaultTpl.location;
-                }
-            } else {
-                btnAdhoc.className = 'py-2 px-3 rounded-xl text-sm font-semibold border-2 border-teal-600 bg-teal-50 text-teal-800 transition';
-                btnFixed.className = 'py-2 px-3 rounded-xl text-sm font-semibold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition';
-                document.getElementById('m-title').value = '';
-                document.getElementById('m-chair').value = '賴寧生院長';
-                document.getElementById('m-location').value = '';
-            }
+        function onChangeEditTemplateSelect() {
+            isEditingTemplate = false;
+            renderTemplateMembersEditor();
         }
 
-        function startNewMeetingSession() {
+        function confirmTemplateEdits() {
+            const tplId = document.getElementById('edit-template-select').value;
+            const tpl = appState.templates.find(t => t.id === tplId);
+            if (tpl) {
+                tpl.name = document.getElementById('tpl-name').value.trim() || tpl.name;
+                tpl.chair = document.getElementById('tpl-chair').value.trim() || tpl.chair;
+                tpl.location = document.getElementById('tpl-location').value.trim() || tpl.location;
+            }
+            isEditingTemplate = false;
+            saveState();
+            renderMeetingsTab();
+            showToast(`已確認並儲存「${tpl ? tpl.name : '固定會議群組'}」名單設定！`, 'success');
+        }
+
+        function renderMeetingsTab() {
+            document.getElementById('m-date').value = getTodayStr();
+            const tplOptions = appState.templates.map(t => `<option value="${t.id}">${t.name} (${t.memberIds.length}人)</option>`).join('');
+
+            const mTplSelect = document.getElementById('m-template-select');
+            const prevMTpl = mTplSelect.value;
+            mTplSelect.innerHTML = tplOptions;
+            if (prevMTpl && appState.templates.some(t => t.id === prevMTpl)) {
+                mTplSelect.value = prevMTpl;
+            }
+
+            const editSelect = document.getElementById('edit-template-select');
+            const prevVal = editSelect.value;
+            editSelect.innerHTML = tplOptions;
+            if (prevVal && appState.templates.some(t => t.id === prevVal)) {
+                editSelect.value = prevVal;
+            }
+
+            setMeetingFormType(currentMeetingFormType);
+            renderScheduledMeetingsList();
+            renderTemplateMembersEditor();
+        }
+
+        function buildMeetingFromForm() {
             const title = document.getElementById('m-title').value.trim();
             const date = document.getElementById('m-date').value || getTodayStr();
             const time = document.getElementById('m-time').value || '09:00';
@@ -1829,22 +1721,22 @@
 
             if (!title) {
                 showToast('請輸入會議名稱', 'error');
-                return;
+                return null;
             }
 
             if (currentMeetingFormType === 'fixed') {
-                const tpl = appState.templates.find(t => t.name === title) || appState.templates[0];
+                const tplId = document.getElementById('m-template-select').value;
+                const tpl = appState.templates.find(t => t.id === tplId) || appState.templates[0];
                 const session = createSessionFromTemplate(tpl, date, time);
                 session.title = title;
                 session.chair = chair;
                 session.location = location;
-                appState.currentMeeting = session;
+                return session;
             } else {
-                // 非固定會議：載入全體名單供勾選或直接點名
-                appState.currentMeeting = {
+                return {
                     id: 'mtg_' + Date.now(),
                     type: 'adhoc',
-                    templateId: null,
+                    templateId: '',
                     title,
                     date,
                     time,
@@ -1866,10 +1758,143 @@
                     }))
                 };
             }
+        }
+
+        function addScheduledMeeting() {
+            const session = buildMeetingFromForm();
+            if (!session) return;
+
+            if (!Array.isArray(appState.scheduledMeetings)) {
+                appState.scheduledMeetings = [];
+            }
+            appState.scheduledMeetings.push(session);
+            // 依日期與時間排序
+            appState.scheduledMeetings.sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
+
+            saveState();
+            renderScheduledMeetingsList();
+            renderRollCallBoard();
+            showToast(`已將「${session.date} ${session.title}」加入預排會議清單！`, 'success');
+        }
+
+        function switchCurrentMeetingSession(meetingId) {
+            if (!Array.isArray(appState.scheduledMeetings)) return;
+            const target = appState.scheduledMeetings.find(m => m.id === meetingId);
+            if (!target) return;
+
+            appState.currentMeeting = target;
+            saveState();
+            renderRollCallBoard();
+            if (currentTab === 'meetings') renderScheduledMeetingsList();
+            if (currentTab === 'dashboard') renderDashboard();
+            showToast(`已切換至「${target.date} ${target.title}」點名看板`, 'info');
+        }
+
+        function deleteScheduledMeeting(meetingId) {
+            if (!Array.isArray(appState.scheduledMeetings)) return;
+            if (appState.scheduledMeetings.length <= 1) {
+                showToast('至少需保留一場進行中或預排會議', 'error');
+                return;
+            }
+            const target = appState.scheduledMeetings.find(m => m.id === meetingId);
+            appState.scheduledMeetings = appState.scheduledMeetings.filter(m => m.id !== meetingId);
+
+            if (appState.currentMeeting && appState.currentMeeting.id === meetingId) {
+                appState.currentMeeting = appState.scheduledMeetings[0];
+            }
+            saveState();
+            renderScheduledMeetingsList();
+            renderRollCallBoard();
+            showToast(`已移除預排會議「${target ? target.title : ''}」`, 'info');
+        }
+
+        function renderScheduledMeetingsList() {
+            const container = document.getElementById('scheduled-meetings-list');
+            const countBadge = document.getElementById('scheduled-meetings-count');
+            if (!container) return;
+
+            if (!Array.isArray(appState.scheduledMeetings)) {
+                appState.scheduledMeetings = appState.currentMeeting ? [appState.currentMeeting] : [];
+            }
+            if (countBadge) countBadge.textContent = `共 ${appState.scheduledMeetings.length} 場`;
+
+            container.innerHTML = appState.scheduledMeetings.map(m => {
+                const isCurrent = appState.currentMeeting && appState.currentMeeting.id === m.id;
+                const formalCount = (m.attendees || []).filter(a => !a.isObserver).length;
+                const presentCount = (m.attendees || []).filter(a => !a.isObserver && ['present', 'late', 'proxy'].includes(a.status)).length;
+                return `
+                    <div class="p-3.5 rounded-xl border transition flex flex-col justify-between gap-2.5 ${isCurrent ? 'bg-teal-50/80 border-teal-500 ring-1 ring-teal-500/30' : 'bg-slate-50/70 border-slate-200 hover:border-indigo-300'}">
+                        <div>
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-xs font-mono font-semibold text-slate-600">
+                                    <i class="fa-regular fa-calendar mr-1 text-teal-600"></i>${m.date} ${m.time}
+                                </span>
+                                ${isCurrent
+                                    ? '<span class="px-2 py-0.5 bg-teal-600 text-white rounded-full text-[10px] font-bold">目前點名中</span>'
+                                    : '<span class="px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded-full text-[10px] font-semibold">已預排</span>'}
+                            </div>
+                            <div class="font-bold text-slate-800 text-sm mt-1 truncate">${m.title}</div>
+                            <div class="text-xs text-slate-500 mt-0.5 truncate">主席：${m.chair} · 地點：${m.location}</div>
+                        </div>
+                        <div class="flex items-center justify-between pt-2 border-t border-black/5">
+                            <span class="text-xs font-semibold text-slate-600">實到 ${presentCount} / ${formalCount} 人</span>
+                            <div class="flex items-center gap-1.5">
+                                <button type="button" onclick="switchCurrentMeetingSession('${m.id}'); switchTab('rollcall');" class="px-2.5 py-1 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-bold transition">
+                                    進入點名
+                                </button>
+                                <button type="button" onclick="deleteScheduledMeeting('${m.id}')" title="移除此預排場次" class="p-1.5 text-slate-400 hover:text-rose-600 transition">
+                                    <i class="fa-solid fa-trash-can text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function onSelectMeetingTemplate() {
+            const tplId = document.getElementById('m-template-select').value;
+            const tpl = appState.templates.find(t => t.id === tplId) || appState.templates[0];
+            if (tpl) {
+                document.getElementById('m-title').value = tpl.name;
+                document.getElementById('m-chair').value = tpl.chair;
+                document.getElementById('m-location').value = tpl.location;
+            }
+        }
+
+        function setMeetingFormType(type) {
+            currentMeetingFormType = type;
+            const btnFixed = document.getElementById('btn-type-fixed');
+            const btnAdhoc = document.getElementById('btn-type-adhoc');
+            const fixedGroupWrapper = document.getElementById('m-fixed-group-wrapper');
+
+            if (type === 'fixed') {
+                btnFixed.className = 'py-2 px-3 rounded-xl text-sm font-semibold border-2 border-teal-600 bg-teal-50 text-teal-800 transition';
+                btnAdhoc.className = 'py-2 px-3 rounded-xl text-sm font-semibold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition';
+                fixedGroupWrapper.classList.remove('hidden');
+                onSelectMeetingTemplate();
+            } else {
+                btnAdhoc.className = 'py-2 px-3 rounded-xl text-sm font-semibold border-2 border-teal-600 bg-teal-50 text-teal-800 transition';
+                btnFixed.className = 'py-2 px-3 rounded-xl text-sm font-semibold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition';
+                fixedGroupWrapper.classList.add('hidden');
+                document.getElementById('m-title').value = '';
+                document.getElementById('m-location').value = '';
+            }
+        }
+
+        function startNewMeetingSession() {
+            const session = buildMeetingFromForm();
+            if (!session) return;
+
+            if (!Array.isArray(appState.scheduledMeetings)) {
+                appState.scheduledMeetings = [];
+            }
+            appState.scheduledMeetings.unshift(session);
+            appState.currentMeeting = session;
 
             saveState();
             switchTab('rollcall');
-            showToast(`已建立並載入「${title}」點名看板！`, 'success');
+            showToast(`已啟動「${session.title}」點名看板！`, 'success');
         }
 
         function renderTemplateMembersEditor() {
@@ -1877,17 +1902,51 @@
             const tpl = appState.templates.find(t => t.id === tplId);
             if (!tpl) return;
 
-            document.getElementById('tpl-name').value = tpl.name;
-            document.getElementById('tpl-chair').value = tpl.chair;
-            document.getElementById('tpl-location').value = tpl.location;
+            const nameInput = document.getElementById('tpl-name');
+            const chairInput = document.getElementById('tpl-chair');
+            const locInput = document.getElementById('tpl-location');
+
+            nameInput.value = tpl.name;
+            chairInput.value = tpl.chair;
+            locInput.value = tpl.location;
+
+            nameInput.disabled = !isEditingTemplate;
+            chairInput.disabled = !isEditingTemplate;
+            locInput.disabled = !isEditingTemplate;
+
             document.getElementById('tpl-selected-count').textContent = tpl.memberIds.length;
+
+            // 切換編修 / 確認儲存按鈕與狀態標籤
+            const btnEdit = document.getElementById('btn-edit-template');
+            const btnConfirm = document.getElementById('btn-confirm-template');
+            const modeBadge = document.getElementById('tpl-mode-badge');
+            const bulkActions = document.getElementById('tpl-bulk-actions');
+
+            if (isEditingTemplate) {
+                btnEdit.classList.add('hidden');
+                btnConfirm.classList.remove('hidden');
+                bulkActions.classList.remove('hidden');
+                modeBadge.className = 'px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800';
+                modeBadge.textContent = '編修中（勾選後請按確認儲存）';
+            } else {
+                btnEdit.classList.remove('hidden');
+                btnConfirm.classList.add('hidden');
+                bulkActions.classList.add('hidden');
+                modeBadge.className = 'px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-200 text-slate-700';
+                modeBadge.textContent = '檢視模式（點擊「編修名單」可修改）';
+            }
 
             const container = document.getElementById('template-members-checklist');
             container.innerHTML = appState.members.map(m => {
                 const checked = tpl.memberIds.includes(m.id);
+                const disabledAttr = isEditingTemplate ? '' : 'disabled';
+                const cardStyle = isEditingTemplate
+                    ? (checked ? 'bg-teal-50/70 border-teal-400 cursor-pointer' : 'bg-white border-slate-200 hover:bg-slate-50 cursor-pointer')
+                    : (checked ? 'bg-teal-50/50 border-teal-300 cursor-default' : 'bg-slate-50/60 border-slate-200 opacity-60 cursor-default');
+
                 return `
-                    <label class="flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer transition ${checked ? 'bg-teal-50/70 border-teal-400' : 'bg-white border-slate-200 hover:bg-slate-50'}">
-                        <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleMemberInTemplate('${tpl.id}', '${m.id}')" class="rounded text-teal-600 focus:ring-teal-500 w-4 h-4">
+                    <label class="flex items-center gap-2.5 p-2.5 rounded-xl border transition ${cardStyle}">
+                        <input type="checkbox" ${checked ? 'checked' : ''} ${disabledAttr} onchange="toggleMemberInTemplate('${tpl.id}', '${m.id}')" class="rounded text-teal-600 focus:ring-teal-500 w-4 h-4 disabled:opacity-70">
                         <img src="${getAvatarUrl(m)}" class="w-8 h-8 rounded-full object-cover">
                         <div class="min-w-0">
                             <div class="text-sm font-bold text-slate-800 truncate">${m.name}</div>
@@ -1899,6 +1958,7 @@
         }
 
         function toggleMemberInTemplate(tplId, memberId) {
+            if (!isEditingTemplate) return;
             const tpl = appState.templates.find(t => t.id === tplId);
             if (!tpl) return;
 
@@ -1909,20 +1969,22 @@
                 tpl.memberIds.push(memberId);
             }
             saveState();
-            renderTemplateMembersEditor();
+            renderMeetingsTab();
         }
 
         function toggleAllTemplateMembers(selectAll) {
+            if (!isEditingTemplate) return;
             const tplId = document.getElementById('edit-template-select').value;
             const tpl = appState.templates.find(t => t.id === tplId);
             if (!tpl) return;
 
             tpl.memberIds = selectAll ? appState.members.map(m => m.id) : [];
             saveState();
-            renderTemplateMembersEditor();
+            renderMeetingsTab();
         }
 
         function updateTemplateMeta() {
+            if (!isEditingTemplate) return;
             const tplId = document.getElementById('edit-template-select').value;
             const tpl = appState.templates.find(t => t.id === tplId);
             if (!tpl) return;
@@ -1932,7 +1994,6 @@
             tpl.location = document.getElementById('tpl-location').value.trim() || tpl.location;
             saveState();
             renderMeetingsTab();
-            showToast('已更新固定會議群組設定');
         }
 
         function createNewTemplatePrompt() {
@@ -1945,11 +2006,28 @@
                 memberIds: appState.members.slice(0, 5).map(m => m.id)
             };
             appState.templates.push(newTpl);
+            isEditingTemplate = true;
             saveState();
             renderMeetingsTab();
             document.getElementById('edit-template-select').value = newTpl.id;
             renderTemplateMembersEditor();
-            showToast(`已建立新固定會議群組「${newTpl.name}」`);
+            showToast(`已建立新固定會議群組「${newTpl.name}」，請勾選人員後按「確認儲存」`);
+        }
+
+        function deleteCurrentTemplate() {
+            if (appState.templates.length <= 1) {
+                showToast('系統至少需保留一組固定會議群組，無法刪除最後一組', 'error');
+                return;
+            }
+            const tplId = document.getElementById('edit-template-select').value;
+            const tpl = appState.templates.find(t => t.id === tplId);
+            if (!tpl) return;
+
+            appState.templates = appState.templates.filter(t => t.id !== tplId);
+            isEditingTemplate = false;
+            saveState();
+            renderMeetingsTab();
+            showToast(`已刪除固定會議群組「${tpl.name}」`, 'info');
         }
 
         function saveAsFixedTemplate() {
@@ -1972,7 +2050,8 @@
 
         function renderMembersTable() {
             const keyword = (document.getElementById('member-search').value || '').toLowerCase();
-            const tbody = document.getElementById('members-table-body');
+            const grid = document.getElementById('members-cards-grid');
+            if (!grid) return;
             const personStats = calculateAllPersonStats('all');
 
             const filtered = appState.members.filter(m =>
@@ -1981,36 +2060,139 @@
                 m.title.toLowerCase().includes(keyword)
             );
 
-            tbody.innerHTML = filtered.map((m, idx) => {
+            const totalBadge = document.getElementById('members-total-badge');
+            if (totalBadge) totalBadge.textContent = `顯示 ${filtered.length} / 共 ${appState.members.length} 人`;
+
+            const canDrag = keyword.length === 0;
+
+            grid.innerHTML = filtered.map((m, idx) => {
                 const st = personStats[m.id];
-                const rateText = st && st.expected > 0 ? `${st.rate}% (${st.present}/${st.expected})` : '尚無紀錄';
+                const rateText = st && st.expected > 0 ? `出席率 ${st.rate}% (${st.present}/${st.expected})` : '尚無出席紀錄';
+                const realIdx = appState.members.findIndex(item => item.id === m.id);
 
                 return `
-                    <tr class="hover:bg-slate-50/80 transition">
-                        <td class="py-3 px-4 text-center">
-                            <div class="inline-flex items-center gap-1">
-                                <button onclick="moveMemberOrder('${m.id}', -1)" title="上移" class="p-1 text-slate-400 hover:text-teal-600"><i class="fa-solid fa-arrow-up"></i></button>
-                                <button onclick="moveMemberOrder('${m.id}', 1)" title="下移" class="p-1 text-slate-400 hover:text-teal-600"><i class="fa-solid fa-arrow-down"></i></button>
+                    <div
+                        data-member-id="${m.id}"
+                        draggable="${canDrag}"
+                        ondragstart="handleMemberDragStart(event, '${m.id}')"
+                        ondragover="handleMemberDragOver(event)"
+                        ondragenter="handleMemberDragEnter(event)"
+                        ondragleave="handleMemberDragLeave(event)"
+                        ondrop="handleMemberDrop(event, '${m.id}')"
+                        ondragend="handleMemberDragEnd(event)"
+                        class="member-manage-card group relative bg-white rounded-2xl border border-slate-200 hover:border-teal-400 p-3.5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between ${canDrag ? 'cursor-grab active:cursor-grabbing' : ''}">
+
+                        <!-- 頂部：序號、拖曳握把與修改刪除按鈕 -->
+                        <div class="flex items-center justify-between gap-2 pb-2 mb-2.5 border-b border-slate-100">
+                            <div class="flex items-center gap-1.5 text-xs text-slate-400">
+                                <i class="fa-solid fa-grip-vertical ${canDrag ? 'text-slate-400 group-hover:text-teal-600' : 'opacity-30'}"></i>
+                                <span class="px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded font-mono font-bold text-[11px]">#${realIdx + 1}</span>
                             </div>
-                        </td>
-                        <td class="py-3 px-4">
-                            <img src="${getAvatarUrl(m)}" class="w-10 h-10 rounded-full object-cover border border-slate-200">
-                        </td>
-                        <td class="py-3 px-4 font-bold text-slate-800">${m.name}</td>
-                        <td class="py-3 px-4 text-slate-600">${m.dept}</td>
-                        <td class="py-3 px-4"><span class="px-2.5 py-0.5 bg-slate-100 text-slate-700 rounded-lg text-xs font-medium">${m.title}</span></td>
-                        <td class="py-3 px-4 text-center text-xs font-semibold text-teal-700">${rateText}</td>
-                        <td class="py-3 px-4 text-right space-x-1">
-                            <button onclick="openMemberModal('${m.id}')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-teal-50 text-slate-700 hover:text-teal-700 rounded-lg text-xs font-medium transition">
-                                <i class="fa-solid fa-pen"></i> 修改
-                            </button>
-                            <button onclick="deleteMember('${m.id}')" class="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-xs font-medium transition">
-                                <i class="fa-solid fa-trash"></i>
-                            </button>
-                        </td>
-                    </tr>
+                            <div class="flex items-center gap-1">
+                                <button type="button" onclick="moveMemberOrder('${m.id}', -1)" title="往前移" class="w-6 h-6 rounded hover:bg-slate-100 text-slate-400 hover:text-teal-600 text-xs flex items-center justify-center">
+                                    <i class="fa-solid fa-chevron-left"></i>
+                                </button>
+                                <button type="button" onclick="moveMemberOrder('${m.id}', 1)" title="往後移" class="w-6 h-6 rounded hover:bg-slate-100 text-slate-400 hover:text-teal-600 text-xs flex items-center justify-center">
+                                    <i class="fa-solid fa-chevron-right"></i>
+                                </button>
+                                <button type="button" onclick="openMemberModal('${m.id}')" title="修改資料" class="px-2 py-1 bg-slate-100 hover:bg-teal-50 text-slate-700 hover:text-teal-700 rounded-lg text-xs font-medium transition">
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>
+                                <button type="button" onclick="deleteMember('${m.id}')" title="刪除人員" class="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-xs font-medium transition">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 中間：大頭照、姓名、單位、職稱 -->
+                        <div class="flex items-center gap-3">
+                            <img src="${getAvatarUrl(m)}" alt="${m.name}" class="w-12 h-12 rounded-full object-cover border border-slate-200 shrink-0 pointer-events-none">
+                            <div class="min-w-0 flex-1">
+                                <div class="font-bold text-slate-800 text-base truncate">${m.name}</div>
+                                <div class="text-xs text-slate-500 truncate mt-0.5">${m.dept}</div>
+                                <span class="inline-block mt-1 px-2 py-0.5 bg-teal-50 text-teal-800 border border-teal-200/70 rounded-md text-[11px] font-semibold truncate max-w-full">${m.title}</span>
+                            </div>
+                        </div>
+
+                        <!-- 底部：歷次出席率 -->
+                        <div class="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+                            <span><i class="fa-solid fa-chart-simple text-teal-600 mr-1"></i>${rateText}</span>
+                        </div>
+                    </div>
                 `;
             }).join('');
+        }
+
+        let draggedMemberId = null;
+
+        function handleMemberDragStart(e, id) {
+            draggedMemberId = id;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', id);
+            setTimeout(() => {
+                if (e.target) e.target.classList.add('opacity-40', 'scale-95');
+            }, 0);
+        }
+
+        function handleMemberDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        }
+
+        function handleMemberDragEnter(e) {
+            e.preventDefault();
+            const card = e.currentTarget;
+            if (card && card.dataset.memberId !== draggedMemberId) {
+                card.classList.add('ring-2', 'ring-teal-500', 'bg-teal-50/40');
+            }
+        }
+
+        function handleMemberDragLeave(e) {
+            const card = e.currentTarget;
+            if (card) {
+                card.classList.remove('ring-2', 'ring-teal-500', 'bg-teal-50/40');
+            }
+        }
+
+        function handleMemberDrop(e, targetId) {
+            e.preventDefault();
+            const card = e.currentTarget;
+            if (card) {
+                card.classList.remove('ring-2', 'ring-teal-500', 'bg-teal-50/40');
+            }
+            if (!draggedMemberId || draggedMemberId === targetId) return;
+
+            const fromIdx = appState.members.findIndex(m => m.id === draggedMemberId);
+            const toIdx = appState.members.findIndex(m => m.id === targetId);
+            if (fromIdx < 0 || toIdx < 0) return;
+
+            const [movedItem] = appState.members.splice(fromIdx, 1);
+            appState.members.splice(toIdx, 0, movedItem);
+
+            // 同步調整目前點名看板的卡片順序
+            syncCurrentMeetingOrderWithMembers();
+
+            saveState();
+            renderMembersTable();
+            renderRollCallBoard();
+            showToast(`已調整「${movedItem.name}」的排列位置`, 'success');
+        }
+
+        function handleMemberDragEnd(e) {
+            draggedMemberId = null;
+            document.querySelectorAll('.member-manage-card').forEach(c => {
+                c.classList.remove('opacity-40', 'scale-95', 'ring-2', 'ring-teal-500', 'bg-teal-50/40');
+            });
+        }
+
+        function syncCurrentMeetingOrderWithMembers() {
+            if (!appState.currentMeeting || !appState.currentMeeting.attendees) return;
+            const orderMap = new Map(appState.members.map((m, idx) => [m.id, idx]));
+            appState.currentMeeting.attendees.sort((a, b) => {
+                const idxA = orderMap.has(a.memberId) ? orderMap.get(a.memberId) : 9999;
+                const idxB = orderMap.has(b.memberId) ? orderMap.get(b.memberId) : 9999;
+                return idxA - idxB;
+            });
         }
 
         function moveMemberOrder(id, direction) {
@@ -2022,8 +2204,10 @@
             const temp = appState.members[idx];
             appState.members[idx] = appState.members[targetIdx];
             appState.members[targetIdx] = temp;
+            syncCurrentMeetingOrderWithMembers();
             saveState();
             renderMembersTable();
+            renderRollCallBoard();
         }
 
         function sortMembers(mode) {
@@ -2693,15 +2877,29 @@
             openQRModal,
             executeSelfCheckIn,
             setMeetingFormType,
+            onSelectMeetingTemplate,
             startNewMeetingSession,
+            addScheduledMeeting,
+            switchCurrentMeetingSession,
+            deleteScheduledMeeting,
+            setTemplateEditMode,
+            onChangeEditTemplateSelect,
+            confirmTemplateEdits,
             renderTemplateMembersEditor,
             toggleMemberInTemplate,
             toggleAllTemplateMembers,
             updateTemplateMeta,
             createNewTemplatePrompt,
+            deleteCurrentTemplate,
             saveAsFixedTemplate,
             renderMembersTable,
             moveMemberOrder,
+            handleMemberDragStart,
+            handleMemberDragOver,
+            handleMemberDragEnter,
+            handleMemberDragLeave,
+            handleMemberDrop,
+            handleMemberDragEnd,
             sortMembers,
             openMemberModal,
             handleAvatarUpload,
@@ -2723,9 +2921,14 @@
             closeModal
         });
 
-        window.addEventListener('load', function () {
+        // 確保 DOM 載入後立即先渲染畫面並初始化資料，不依賴外部套件是否卡住
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                initCloudSync();
+            });
+        } else {
             initCloudSync();
-        });
+        }
     </script>
 </body>
 </html>
